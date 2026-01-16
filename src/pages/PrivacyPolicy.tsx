@@ -1,5 +1,5 @@
 import React from "react";
-import logo from "public/logo.png";
+import logo from "@/components/logo/logo.png";
 
 type Section = { id: number; slug: string; title: string; content: React.ReactNode };
 

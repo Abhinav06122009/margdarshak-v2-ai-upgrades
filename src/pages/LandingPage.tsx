@@ -134,7 +134,7 @@ const Preloader = () => (
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
       >
-        <img src="public/logo.png" alt="Logo" className="h-16 w-16 rounded-full" />
+        <img src="src/components/logo/logo.png" alt="Logo" className="h-16 w-16 rounded-full" />
       </motion.div>
       <motion.h1
         initial={{ y: 20, opacity: 0 }}
@@ -207,7 +207,7 @@ const ScrollProgressBar = () => {
   );
 };
 
-// --- New Smart Components ---
+// --- New Gemini-Powered Components ---
 
 // A simple loading spinner
 const LoadingSpinner = () => (
@@ -261,7 +261,7 @@ const fetchWithBackoff = async (url, options, retries = 3, delay = 1000) => {
 
 
 // The new interactive feature section
-const SmartFeatureDemo = () => {
+const GeminiFeatureDemo = () => {
   const [topic, setTopic] = useState("Quantum Entanglement");
   const [explanation, setExplanation] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -300,7 +300,7 @@ const SmartFeatureDemo = () => {
       if (candidate && candidate.content?.parts?.[0]?.text) {
         setExplanation(candidate.content.parts[0].text);
       } else {
-        throw new Error("No valid response received.");
+        throw new Error("No valid response received from the AI.");
       }
     } catch (err) {
       setError("Sorry, I couldn't fetch an explanation. Please try again later.");
@@ -311,10 +311,10 @@ const SmartFeatureDemo = () => {
   };
 
   return (
-    <SectionWrapper id="smart-demo" className="container mx-auto">
+    <SectionWrapper id="gemini-demo" className="container mx-auto">
       <SectionHeader 
-        title="✨ Try the Smart Assistant" 
-        subtitle="Get a simple explanation for any academic concept." 
+        title="✨ Try the AI Assistant" 
+        subtitle="Get a simple explanation for any academic concept. Powered by Gemini." 
       />
       <motion.div
         className="max-w-3xl mx-auto p-8 border border-blue-600/30 bg-gray-900/50 rounded-2xl shadow-xl backdrop-blur-sm"
@@ -343,7 +343,7 @@ const SmartFeatureDemo = () => {
             ) : (
               <Sparkles className="w-5 h-5 transition-transform group-hover:scale-125" />
             )}
-            <span>{isLoading ? "Processing..." : "Explain"}</span>
+            <span>{isLoading ? "Generating..." : "Explain"}</span>
           </button>
         </div>
         
@@ -361,7 +361,7 @@ const SmartFeatureDemo = () => {
             transition={{ duration: 0.5 }}
           >
             <h4 className="text-xl font-bold text-emerald-400 mb-3">Explanation:</h4>
-            {/* Using 'pre-wrap' safely renders newlines from the text response */}
+            {/* Using 'pre-wrap' safely renders newlines from the AI's text response */}
             <p className="text-gray-300 text-lg" style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
               {explanation}
             </p>
@@ -427,11 +427,11 @@ const Features = () => (
   <SectionWrapper id="features" className="container mx-auto">
     <SectionHeader 
       title="Core Capabilities" 
-      subtitle="Designed to streamline every aspect of your academic life with cutting-edge technology." 
+      subtitle="Designed to streamline every aspect of your academic life with cutting-edge AI." 
     />
     <div className="grid md:grid-cols-3 gap-8">
       {[
-        { icon: BrainCircuit, title: 'Smart Study Assistant', desc: 'Generate summaries, outlines, and flashcards instantly.' },
+        { icon: BrainCircuit, title: 'AI Study Assistant', desc: 'Generate summaries, outlines, and flashcards instantly.' },
         { icon: BarChart, title: 'Grade Prediction Engine', desc: 'Predict final outcomes based on current performance data.' },
         { icon: Calendar, title: 'Dynamic Scheduling', desc: 'Automatically optimize your study time around fixed commitments.' },
         { icon: Shield, title: 'Data Security', desc: 'Your academic data is secured with enterprise-grade encryption.' },
@@ -461,7 +461,7 @@ const Features = () => (
 const Testimonials = () => {
   const testimonials = [
     { name: 'Sarah K.', role: 'Med Student', stars: 5, quote: "MARGDARSHAK's scheduler is a lifesaver. It found study time I didn't know I had. My grades have visibly improved.", image: 'https://placehold.co/100x100/313131/FFFFFF?text=SK' },
-    { name: 'David L.', role: 'Engineering', stars: 5, quote: "The smart summaries for complex research papers are spot on. It saves me hours of reading.", image: 'https://placehold.co/100x100/313131/FFFFFF?text=DL' },
+    { name: 'David L.', role: 'Engineering', stars: 5, quote: "The AI summaries for complex research papers are spot on. It saves me hours of reading.", image: 'https://placehold.co/100x100/313131/FFFFFF?text=DL' },
     { name: 'Priya S.', role: 'Comp. Sci.', stars: 5, quote: "I was skeptical about the grade predictor, but it was scarily accurate. It motivated me to push harder for the final.", image: 'https://placehold.co/100x100/313131/FFFFFF?text=PS' },
   ];
 
@@ -507,7 +507,7 @@ const About = () => {
   const values = [
     { icon: Target, title: 'Precision', desc: 'Focusing on accurate data and achievable goals.' },
     { icon: Eye, title: 'Foresight', desc: 'Using predictive analytics to guide future success.' },
-    { icon: Sparkles, title: 'Innovation', desc: 'Constantly evolving our platform to meet student needs.' },
+    { icon: Sparkles, title: 'Innovation', desc: 'Constantly evolving our AI to meet student needs.' },
   ];
   return (
     <SectionWrapper id="about" className="container mx-auto">
@@ -562,7 +562,7 @@ const Pricing = () => {
       name: 'Explorer',
       price: '$0',
       desc: 'For casual learners getting started.',
-      features: ['Basic Study Helper', '1 Course Integration', 'Habit Tracker', 'Community Support'],
+      features: ['Basic AI Assistant', '1 Course Integration', 'Habit Tracker', 'Community Support'],
       popular: false,
     },
     {
@@ -570,7 +570,7 @@ const Pricing = () => {
       price: 'RS 750',
       desc: 'The most popular choice for dedicated students.',
       features: [
-        'Advanced Study Helper',
+        'Advanced AI Assistant',
         'Unlimited Course Integrations',
         'Grade Prediction Engine',
         'Dynamic Scheduling',
@@ -583,7 +583,7 @@ const Pricing = () => {
       price: 'RS 1200',
       desc: 'For high-achievers who want every advantage.',
       features: [
-        'Pro Study Helper (Elite Level)',
+        'Pro AI Assistant (GPT-4 Level)',
         'All Navigator Features',
         'Real-time Tutor Sync (Beta)',
         'Personalized Success Coach'
@@ -684,7 +684,7 @@ const Footer = () => (
   <footer className="bg-gray-950 border-t border-white/5 py-12">
     <div className="container mx-auto px-6 text-center text-gray-400">
       <div className="flex justify-center items-center gap-3 mb-6">
-        <img src="public/logo.png" alt="Logo" className="h-6 w-6 rounded-md" />
+        <img src="src/components/logo/logo.png" alt="Logo" className="h-6 w-6 rounded-md" />
         <h1 className="text-xl font-bold tracking-wider text-white">MARGDARSHAK</h1>
       </div>
       <div className="flex justify-center space-x-6 mb-6">
@@ -1037,14 +1037,14 @@ const Header = () => {
     >
       <div className="container mx-auto px-6 flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <img src="public/logo.png" alt="Logo" className="h-6 w-6 rounded-md" />
+          <img src="src/components/logo/logo.png" alt="Logo" className="h-6 w-6 rounded-md" />
           <h1 className="text-2xl font-black tracking-wider text-white">MARGDARSHAK</h1>
         </div>
         <ul className="hidden md:flex items-center space-x-8 font-medium">
-          {['home', 'features', 'smart-demo', 'testimonials', 'about', 'pricing'].map(item => (
+          {['home', 'features', 'gemini-demo', 'testimonials', 'about', 'pricing'].map(item => (
             <li key={item}>
               <Link to={`#${item}`} className="capitalize text-gray-300 hover:text-blue-400 transition-colors relative group">
-                {item.replace('smart-demo', 'Live Demo')}
+                {item.replace('gemini-demo', 'AI Demo')}
                 <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-400 to-emerald-400 group-hover:w-full transition-all duration-300" />
               </Link>
             </li>
@@ -1085,10 +1085,10 @@ const Header = () => {
           className="md:hidden mt-4 px-6 pb-4 bg-gray-900/90 backdrop-blur-md border-t border-blue-600/10"
         >
           <ul className="flex flex-col items-start space-y-4">
-            {['home', 'features', 'smart-demo', 'testimonials', 'about', 'pricing'].map(item => (
+            {['home', 'features', 'gemini-demo', 'testimonials', 'about', 'pricing'].map(item => (
               <li key={item} className="w-full">
                 <Link to={`#${item}`} onClick={() => setIsMobileMenuOpen(false)} className="capitalize block py-2 w-full text-gray-300 hover:text-blue-400 transition-colors">
-                  {item.replace('smart-demo', 'Live Demo')}
+                  {item.replace('gemini-demo', 'AI Demo')}
                 </Link>
               </li>
             ))}
@@ -1185,7 +1185,7 @@ const Hero = () => {
           transition={{ duration: 0.6, delay: 2.8 }}
           className="text-sm md:text-base font-semibold uppercase tracking-widest mb-4 inline-block px-4 py-1 rounded-full bg-emerald-600/20 text-emerald-300 border border-emerald-600/50 pulse-shadow-sm"
         >
-          Intelligent Academic Management
+          AI-Powered Academic Management
         </motion.p>
 
         <motion.h1
@@ -1216,7 +1216,7 @@ const Hero = () => {
           transition={{ duration: 0.8, delay: 3.8 }}
           className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-12"
         >
-          MARGDARSHAK (The Guide) is the all-in-one system for students, integrating smart scheduling, predictive analytics, and dynamic task management to guarantee academic excellence.
+          MARGDARSHAK (The Guide) is the all-in-one system for students, integrating AI scheduling, predictive analytics, and dynamic task management to guarantee academic excellence.
         </motion.p>
         
         <motion.div
@@ -1338,7 +1338,7 @@ const App = () => {
           {/* We use Suspense as a good practice, though here all components are bundled */}
           <Suspense fallback={<div className="h-screen bg-[#0A0A0A]" />}>
             <Features />
-            <SmartFeatureDemo />
+            <GeminiFeatureDemo />
             <Testimonials />
             <About />
             <Pricing />
