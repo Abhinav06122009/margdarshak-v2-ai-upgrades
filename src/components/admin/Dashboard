@@ -1,0 +1,2635 @@
+import React, { useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
+import { supabase, User as SupabaseUser } from '@/integrations/supabase/client';
+import { 
+  Clock, Calendar, CheckSquare, BookOpen, Trophy, Command, GripVertical,
+  LogOut, User as UserIcon, TrendingUp, Target, Zap, Star, Bell, Sparkles, Search, 
+  Plus, MoreHorizontal, Edit, Trash2, Shield, AlertCircle, Eye, 
+  GraduationCap, BookMarked, FileText, Users, Activity, Play, Pause, 
+  Award, Flame, Download, Upload, Filter, SortAsc, 
+  RefreshCw, Settings, Wifi, WifiOff, BarChart3, PieChart,
+  TrendingDown, Calendar as CalendarIcon, Clock as ClockIcon, X, ChevronDown,
+  CalculatorIcon,
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { motion, AnimatePresence, useMotionValue, useTransform, useSpring, Reorder, useDragControls } from 'framer-motion';
+import logo from "@/components/logo/logo.png";
+
+// Fixed interfaces for real Supabase data
+interface DashboardProps {
+  onNavigate: (page: string) => void;
+}
+
+interface RealDashboardStats {
+  totalTasks: number;
+  completedTasks: number;
+  pendingTasks: number;
+  inProgressTasks: number;
+  overdueTasks: number;
+  totalStudyTime: number;
+  todayStudyTime: number;
+  weeklyStudyTime: number;
+  monthlyStudyTime: number;
+  averageGrade: number;
+  totalGrades: number;
+  upcomingClasses: number;
+  totalNotes: number;
+  favoritedNotes: number;
+  totalCourses: number;
+  activeCourses: number;
+  completionRate: number;
+  highPriorityTasks: number;
+  completedToday: number;
+  averageSessionLength: number;
+  bestPerformingSubject: string;
+  worstPerformingSubject: string;
+  totalStudySessions: number;
+  productivityScore: number;
+  studyStreak: number;
+  incompleteTasksCount: number;
+  topGradePercentage: number;
+  totalClassesCount: number;
+}
+
+interface RealTask {
+  id: string;
+  title: string;
+  description?: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  priority: 'low' | 'medium' | 'high';
+  due_date?: string;
+  created_at: string;
+  updated_at?: string;
+  user_id: string;
+  course_id?: string;
+  courses?: {
+    name: string;
+    code?: string;
+    color?: string;
+  };
+}
+
+interface RealStudySession {
+  id: string;
+  subject: string;
+  duration: number;
+  start_time: string;
+  end_time?: string;
+  session_type?: 'study' | 'review' | 'practice' | 'exam';
+  notes?: string;
+  user_id: string;
+  course_id?: string;
+  created_at: string;
+}
+
+interface RealGrade {
+  id: string;
+  subject: string;
+  assignment_name: string;
+  grade?: number;
+  total_points?: number;
+  percentage: number;
+  date_recorded: string;
+  user_id: string;
+  course_id?: string;
+  assignment_type?: string;
+  created_at: string;
+}
+
+interface RealNote {
+  id: string;
+  title: string;
+  content?: string;
+  folder?: string;
+  is_favorite: boolean;
+  created_at: string;
+  updated_at?: string;
+  user_id: string;
+  course_id?: string;
+  tags?: string[];
+}
+
+interface RealCourse {
+  id: string;
+  name: string;
+  code?: string;
+  description?: string;
+  grade_level?: string;
+  semester?: string;
+  instructor?: string;
+  credits?: number;
+  color?: string;
+  user_id: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface RealTimetableEntry {
+  id: string;
+  class_name?: string;
+  title?: string;
+  subject?: string;
+  day?: number;
+  day_of_week?: number;
+  start_time: string;
+  end_time: string;
+  location?: string;
+  instructor?: string;
+  course_id?: string;
+  user_id: string;
+  created_at: string;
+  courses?: {
+    name: string;
+    code?: string;
+    color?: string;
+  };
+}
+
+interface SecureUser {
+  id: string;
+  email: string;
+  profile?: {
+    full_name: string;
+    user_type: string;
+    student_id?: string;
+  };
+}
+
+interface RealAnalytics {
+  dailyStudyTime: { date: string; minutes: number; sessions: number }[];
+  subjectBreakdown: { subject: string; minutes: number; percentage: number; sessions: number }[];
+  weeklyProgress: { week: string; studyTime: number; tasksCompleted: number; averageGrade: number }[];
+  monthlyTrends: { month: string; studyTime: number; productivity: number }[];
+  gradeDistribution: { grade: string; count: number; percentage: number }[];
+  sessionTypes: { type: string; count: number; totalMinutes: number }[];
+  incompleteTasksCount: number;
+  topGrades: { subject: string; percentage: number; assignment_name: string }[];
+  totalClasses: number;
+}
+
+// Fixed database helper functions with better error handling
+const secureDataHelpers = {
+  getCurrentUser: async (): Promise<SecureUser | null> => {
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user) return null;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, user_type, student_id')
+        .eq('id', user.id)
+        .single();
+
+      return {
+        id: user.id,
+        email: user.email || '',
+        profile: profile ? {
+          full_name: profile.full_name || 'User',
+          user_type: profile.user_type || 'student',
+          student_id: profile.student_id
+        } : undefined
+      };
+    } catch (error) {
+      console.error('Error getting current user:', error);
+      return null;
+    }
+  },
+
+  fetchAllUserData: async (userId: string) => {
+    console.log('Fetching data for user:', userId);
+    
+    try {
+      // Fixed queries with proper error handling
+      const [
+        tasksResult,
+        studySessionsResult,
+        gradesResult,
+        notesResult,
+        coursesResult,
+        timetableResult
+      ] = await Promise.allSettled([
+        // Simple tasks query
+        supabase
+          .from('tasks')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false }),
+
+        // Study sessions query
+        supabase
+          .from('study_sessions')
+          .select('*')
+          .eq('user_id', userId)
+          .order('start_time', { ascending: false }),
+
+        // Grades query
+        supabase
+          .from('grades')
+          .select('*')
+          .eq('user_id', userId)
+          .order('date_recorded', { ascending: false }),
+
+        // Notes query
+        supabase
+          .from('notes')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false }),
+
+        // Courses query
+        supabase
+          .from('courses')
+          .select('*')
+          .eq('user_id', userId)
+          .order('name'),
+
+        // Fixed timetable query - try multiple possible table structures
+        secureDataHelpers.fetchTimetableData(userId)
+      ]);
+
+      // Log results for debugging
+      console.log('Tasks result:', tasksResult);
+      console.log('Study sessions result:', studySessionsResult);
+      console.log('Grades result:', gradesResult);
+      console.log('Notes result:', notesResult);
+      console.log('Courses result:', coursesResult);
+      console.log('Timetable result:', timetableResult);
+
+      return {
+        tasks: tasksResult.status === 'fulfilled' ? (tasksResult.value.data || []) : [],
+        studySessions: studySessionsResult.status === 'fulfilled' ? (studySessionsResult.value.data || []) : [],
+        grades: gradesResult.status === 'fulfilled' ? (gradesResult.value.data || []) : [],
+        notes: notesResult.status === 'fulfilled' ? (notesResult.value.data || []) : [],
+        courses: coursesResult.status === 'fulfilled' ? (coursesResult.value.data || []) : [],
+        timetable: timetableResult.status === 'fulfilled' ? (timetableResult.value.data || []) : [],
+        errors: [
+          tasksResult.status === 'rejected' ? tasksResult.reason : null,
+          studySessionsResult.status === 'rejected' ? studySessionsResult.reason : null,
+          gradesResult.status === 'rejected' ? gradesResult.reason : null,
+          notesResult.status === 'rejected' ? notesResult.reason : null,
+          coursesResult.status === 'rejected' ? coursesResult.reason : null,
+          timetableResult.status === 'rejected' ? timetableResult.reason : null
+        ].filter(Boolean)
+      };
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      return {
+        tasks: [],
+        studySessions: [],
+        grades: [],
+        notes: [],
+        courses: [],
+        timetable: [],
+        errors: [error]
+      };
+    }
+  },
+
+  // New helper function to handle different timetable structures
+  fetchTimetableData: async (userId: string) => {
+    try {
+      // Try the original structure first
+      const { data, error } = await supabase
+        .from('user_timetables')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (error) {
+        console.warn('user_timetables error:', error);
+        // If user_timetables fails, try 'timetables' or return empty
+        try {
+          const fallback = await supabase
+            .from('timetables')
+            .select('*')
+            .eq('user_id', userId);
+          
+          return fallback;
+        } catch (fallbackError) {
+          console.warn('timetables fallback failed:', fallbackError);
+          return { data: [], error: null };
+        }
+      }
+
+      return { data, error };
+    } catch (error) {
+      console.error('Error in fetchTimetableData:', error);
+      return { data: [], error };
+    }
+  },
+
+  calculateSecureStats: (data: any): RealDashboardStats => {
+    const { tasks, studySessions, grades, notes, courses, timetable } = data;
+    
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // Task statistics with safe defaults
+    const totalTasks = Array.isArray(tasks) ? tasks.length : 0;
+    const completedTasks = Array.isArray(tasks) ? tasks.filter((t: any) => t.status === 'completed').length : 0;
+    const pendingTasks = Array.isArray(tasks) ? tasks.filter((t: any) => t.status === 'pending').length : 0;
+    const inProgressTasks = Array.isArray(tasks) ? tasks.filter((t: any) => t.status === 'in_progress').length : 0;
+    const overdueTasks = Array.isArray(tasks) ? tasks.filter((t: any) => 
+      t.due_date && new Date(t.due_date) < now && t.status !== 'completed'
+    ).length : 0;
+    const highPriorityTasks = Array.isArray(tasks) ? tasks.filter((t: any) => 
+      t.priority === 'high' && t.status !== 'completed'
+    ).length : 0;
+    const completedToday = Array.isArray(tasks) ? tasks.filter((t: any) => 
+      t.status === 'completed' && 
+      t.updated_at && 
+      new Date(t.updated_at).toISOString().split('T')[0] === today
+    ).length : 0;
+    const incompleteTasksCount = Array.isArray(tasks) ? tasks.filter((t: any) => t.status !== 'completed').length : 0;
+
+    // Study time calculations with safe defaults
+    const totalStudyTime = Array.isArray(studySessions) ? 
+      studySessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0) : 0;
+    const todayStudyTime = Array.isArray(studySessions) ? 
+      studySessions
+        .filter((s: any) => s.start_time && s.start_time.split('T')[0] === today)
+        .reduce((sum: number, s: any) => sum + (s.duration || 0), 0) : 0;
+    const weeklyStudyTime = Array.isArray(studySessions) ?
+      studySessions
+        .filter((s: any) => s.start_time && new Date(s.start_time) >= weekAgo)
+        .reduce((sum: number, s: any) => sum + (s.duration || 0), 0) : 0;
+    const monthlyStudyTime = Array.isArray(studySessions) ?
+      studySessions
+        .filter((s: any) => s.start_time && new Date(s.start_time) >= monthAgo)
+        .reduce((sum: number, s: any) => sum + (s.duration || 0), 0) : 0;
+
+    const totalStudySessions = Array.isArray(studySessions) ? studySessions.length : 0;
+    const averageSessionLength = totalStudySessions > 0 ? totalStudyTime / totalStudySessions : 0;
+
+    // Study streak calculation
+    let studyStreak = 0;
+    if (Array.isArray(studySessions)) {
+      let currentDate = new Date(now);
+      currentDate.setHours(0, 0, 0, 0);
+      
+      const studyDates = new Set(
+        studySessions
+          .filter((s: any) => s.start_time)
+          .map((s: any) => s.start_time.split('T')[0])
+      );
+
+      // Check consecutive days backwards from today
+      for (let i = 0; i < 365; i++) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        if (studyDates.has(dateStr)) {
+          studyStreak++;
+          currentDate.setDate(currentDate.getDate() - 1);
+        } else if (dateStr === today) {
+          // Skip today if no study session yet, continue checking yesterday
+          currentDate.setDate(currentDate.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+    }
+
+    // Grade calculations with safe defaults
+    const totalGrades = Array.isArray(grades) ? grades.length : 0;
+    const averageGrade = totalGrades > 0 && Array.isArray(grades) 
+      ? grades.reduce((sum: number, g: any) => sum + (g.percentage || 0), 0) / totalGrades 
+      : 0;
+
+    // Top grade calculation
+    const topGradePercentage = totalGrades > 0 && Array.isArray(grades)
+      ? Math.max(...grades.map((g: any) => g.percentage || 0))
+      : 0;
+
+    // Subject performance analysis with safe defaults, ensuring acc is an object
+    const subjectPerformance = Array.isArray(grades) ? grades.reduce((acc: any, grade: any) => {
+      const subject = grade.subject || 'General';
+      if (!acc[subject]) {
+        acc[subject] = { total: 0, count: 0 };
+      }
+      acc[subject].total += grade.percentage || 0;
+      acc[subject].count += 1;
+      return acc;
+    }, {}) : {};
+
+    const subjectAverages = Object.keys(subjectPerformance).length > 0 ? Object.keys(subjectPerformance).map(subject => ({
+      subject,
+      average: subjectPerformance[subject].total / subjectPerformance[subject].count
+    })) : [];
+
+    const bestPerformingSubject = subjectAverages.length > 0
+      ? subjectAverages.reduce((best, current) => current.average > best.average ? current : best).subject
+      : 'None';
+
+    const worstPerformingSubject = subjectAverages.length > 0 && subjectAverages.length > 1
+      ? subjectAverages.reduce((worst, current) => current.average < worst.average ? current : worst).subject
+      : 'None';
+
+    // Course statistics with safe defaults
+    const totalCourses = Array.isArray(courses) ? courses.length : 0;
+    const activeCourses = Array.isArray(courses) ? courses.filter((c: any) => c.is_active).length : 0;
+
+    // Timetable statistics with safe defaults and flexible field handling
+    const totalClassesCount = Array.isArray(timetable) ? timetable.length : 0;
+    const upcomingClasses = Array.isArray(timetable) ? timetable.filter((entry: any) => {
+      const today = new Date();
+      const currentDay = today.getDay();
+      const currentTime = today.getHours() * 60 + today.getMinutes();
+      
+      if (!entry.start_time) return false;
+      
+      try {
+        const [hours, minutes] = entry.start_time.split(':').map(Number);
+        const entryTime = hours * 60 + minutes;
+        
+        // Handle both 'day' and 'day_of_week' fields
+        const dayField = entry.day_of_week !== undefined ? entry.day_of_week : entry.day;
+        if (dayField === undefined) return false;
+        
+        return (dayField === currentDay && entryTime > currentTime) || 
+               (dayField > currentDay);
+      } catch (error) {
+        console.error('Error parsing time:', error);
+        return false;
+      }
+    }).length : 0;
+
+    // Completion rate
+    const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+
+    // Productivity score with fallback calculation
+    const onTimeCompletionRate = completedTasks > 0 && Array.isArray(tasks)
+      ? tasks.filter((t: any) => 
+          t.status === 'completed' && 
+          t.due_date && 
+          t.updated_at && 
+          new Date(t.updated_at) <= new Date(t.due_date)
+        ).length / completedTasks * 100 
+      : 0;
+
+    const studyConsistency = Math.min(studyStreak * 10, 100); // Max 100 for 10+ day streak
+    const productivityScore = Math.round(
+      (completionRate * 0.4 + onTimeCompletionRate * 0.3 + studyConsistency * 0.3)
+    );
+
+    return {
+      totalTasks,
+      completedTasks,
+      pendingTasks,
+      inProgressTasks,
+      overdueTasks,
+      totalStudyTime,
+      todayStudyTime,
+      weeklyStudyTime,
+      monthlyStudyTime,
+      averageGrade: Math.round(averageGrade * 10) / 10,
+      totalGrades,
+      upcomingClasses,
+      totalNotes: Array.isArray(notes) ? notes.length : 0,
+      favoritedNotes: Array.isArray(notes) ? notes.filter((n: any) => n.is_favorite).length : 0,
+      totalCourses,
+      activeCourses,
+      completionRate: Math.round(completionRate * 10) / 10,
+      studyStreak,
+      highPriorityTasks,
+      completedToday,
+      averageSessionLength: Math.round(averageSessionLength),
+      bestPerformingSubject,
+      worstPerformingSubject,
+      totalStudySessions,
+      productivityScore: Math.max(0, Math.min(100, productivityScore)),
+      incompleteTasksCount,
+      topGradePercentage,
+      totalClassesCount
+    };
+  },
+
+  calculateSecureAnalytics: async (userId: string): Promise<RealAnalytics> => {
+    try {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      
+      const [sessionsResult, gradesResult, tasksResult, timetableResult] = await Promise.allSettled([
+        supabase
+          .from('study_sessions')
+          .select('*')
+          .eq('user_id', userId)
+          .gte('start_time', thirtyDaysAgo.toISOString())
+          .order('start_time', { ascending: false }),
+
+        supabase
+          .from('grades')
+          .select('*')
+          .eq('user_id', userId)
+          .order('date_recorded', { ascending: false }),
+
+        supabase
+          .from('tasks')
+          .select('*')
+          .eq('user_id', userId),
+
+        secureDataHelpers.fetchTimetableData(userId)
+      ]);
+
+      const sessions = sessionsResult.status === 'fulfilled' ? (sessionsResult.value.data || []) : [];
+      const grades = gradesResult.status === 'fulfilled' ? (gradesResult.value.data || []) : [];
+      const tasks = tasksResult.status === 'fulfilled' ? (tasksResult.value.data || []) : [];
+      const timetable = timetableResult.status === 'fulfilled' ? (timetableResult.value.data || []) : [];
+
+      // Safe analytics calculations
+      const dailyData = Array.isArray(sessions) ? sessions.reduce((acc: any, session: any) => {
+        if (!session.start_time) return acc;
+        const date = new Date(session.start_time).toISOString().split('T')[0];
+        if (!acc[date]) {
+          acc[date] = { minutes: 0, sessions: 0 };
+        }
+        acc[date].minutes += session.duration || 0;
+        acc[date].sessions += 1;
+        return acc;
+      }, {}) : {};
+
+      const dailyStudyTime = Object.keys(dailyData)
+        .sort()
+        .slice(-30)
+        .map(date => ({
+          date,
+          minutes: dailyData[date].minutes,
+          sessions: dailyData[date].sessions
+        }));
+
+      // Subject breakdown with safety
+      const subjectData = Array.isArray(sessions) ? sessions.reduce((acc: any, session: any) => {
+        const subject = session.subject || 'General';
+        if (!acc[subject]) {
+          acc[subject] = { minutes: 0, sessions: 0 };
+        }
+        acc[subject].minutes += session.duration || 0;
+        acc[subject].sessions += 1;
+        return acc;
+      }, {}) : {};
+
+      const totalMinutes = Object.values(subjectData).reduce((sum: number, data: any) => sum + data.minutes, 0);
+      const subjectBreakdown = Object.keys(subjectData).map(subject => ({
+        subject,
+        minutes: subjectData[subject].minutes,
+        sessions: subjectData[subject].sessions,
+        percentage: totalMinutes > 0 ? (subjectData[subject].minutes / totalMinutes) * 100 : 0
+      }));
+
+      // Session types with safety
+      const sessionTypeData = Array.isArray(sessions) ? sessions.reduce((acc: any, session: any) => {
+        const type = session.session_type || 'study';
+        if (!acc[type]) {
+          acc[type] = { count: 0, totalMinutes: 0 };
+        }
+        acc[type].count += 1;
+        acc[type].totalMinutes += session.duration || 0;
+        return acc;
+      }, {}) : {};
+
+      const sessionTypes = Object.keys(sessionTypeData).map(type => ({
+        type,
+        count: sessionTypeData[type].count,
+        totalMinutes: sessionTypeData[type].totalMinutes
+      }));
+
+      // Grade distribution with safety
+      const gradeRanges = {
+        'A (90-100%)': Array.isArray(grades) ? grades.filter(g => (g.percentage || 0) >= 90).length : 0,
+        'B (80-89%)': Array.isArray(grades) ? grades.filter(g => (g.percentage || 0) >= 80 && (g.percentage || 0) < 90).length : 0,
+        'C (70-79%)': Array.isArray(grades) ? grades.filter(g => (g.percentage || 0) >= 70 && (g.percentage || 0) < 80).length : 0,
+        'D (60-69%)': Array.isArray(grades) ? grades.filter(g => (g.percentage || 0) >= 60 && (g.percentage || 0) < 70).length : 0,
+        'F (Below 60%)': Array.isArray(grades) ? grades.filter(g => (g.percentage || 0) < 60).length : 0
+      };
+
+      const totalGradesCount = Array.isArray(grades) ? grades.length : 0;
+      const gradeDistribution = Object.keys(gradeRanges).map(grade => ({
+        grade,
+        count: gradeRanges[grade as keyof typeof gradeRanges],
+        percentage: totalGradesCount > 0 ? (gradeRanges[grade as keyof typeof gradeRanges] / totalGradesCount) * 100 : 0
+      }));
+
+      // Top grades with safety
+      const topGrades = Array.isArray(grades) 
+        ? grades
+            .sort((a: any, b: any) => (b.percentage || 0) - (a.percentage || 0))
+            .slice(0, 3)
+            .map((grade: any) => ({
+              subject: grade.subject || 'Unknown',
+              percentage: grade.percentage || 0,
+              assignment_name: grade.assignment_name || 'Unknown'
+            }))
+        : [];
+
+      return {
+        dailyStudyTime,
+        subjectBreakdown,
+        weeklyProgress: [],
+        monthlyTrends: [],
+        gradeDistribution,
+        sessionTypes,
+        incompleteTasksCount: Array.isArray(tasks) ? tasks.filter((t: any) => t.status !== 'completed').length : 0,
+        topGrades,
+        totalClasses: Array.isArray(timetable) ? timetable.length : 0
+      };
+    } catch (error) {
+      console.error('Error calculating secure analytics:', error);
+      return {
+        dailyStudyTime: [],
+        subjectBreakdown: [],
+        weeklyProgress: [],
+        monthlyTrends: [],
+        gradeDistribution: [],
+        sessionTypes: [],
+        incompleteTasksCount: 0,
+        topGrades: [],
+        totalClasses: 0
+      };
+    }
+  },
+
+  setupSecureRealTimeSubscription: (userId: string, callbacks: any) => {
+    const channels = [
+      supabase
+        .channel('secure_tasks_updates')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'tasks',
+            filter: `user_id=eq.${userId}`
+          },
+          callbacks.onTaskUpdate
+        )
+        .subscribe(),
+
+      supabase
+        .channel('secure_sessions_updates')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'study_sessions',
+            filter: `user_id=eq.${userId}`
+          },
+          callbacks.onSessionUpdate
+        )
+        .subscribe(),
+
+      supabase
+        .channel('secure_grades_updates')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'grades',
+            filter: `user_id=eq.${userId}`
+          },
+          callbacks.onGradeUpdate
+        )
+        .subscribe(),
+
+      supabase
+        .channel('secure_notes_updates')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notes',
+            filter: `user_id=eq.${userId}`
+          },
+          callbacks.onNoteUpdate
+        )
+        .subscribe()
+    ];
+
+    return () => {
+      channels.forEach(channel => {
+        supabase.removeChannel(channel);
+      });
+    };
+  },
+
+  // Secure task operations with proper error handling
+  updateTaskStatus: async (taskId: string, status: string, userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .update({ 
+          status, 
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', taskId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      throw error;
+    }
+  },
+
+  deleteTask: async (taskId: string, userId: string) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      throw error;
+    }
+  },
+
+  createQuickTask: async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert([{
+          title: 'New Task',
+          description: 'Add description here',
+          status: 'pending',
+          priority: 'medium',
+          user_id: userId
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating quick task:', error);
+      throw error;
+    }
+  },
+
+  bulkUpdateTasks: async (taskIds: string[], updates: any, userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .in('id', taskIds)
+        .eq('user_id', userId)
+        .select();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error in bulk update:', error);
+      throw error;
+    }
+  },
+
+  exportToCSV: (data: any[], filename: string) => {
+    if (data.length === 0) return;
+
+    const headers = Object.keys(data[0]).filter(key => 
+      typeof data[0][key] !== 'object' || data[0][key] === null
+    );
+    
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + headers.join(",") + "\n"
+      + data.map(row => 
+          headers.map(header => {
+            const value = row[header];
+            if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+              return `"${value.replace(/"/g, '""')}"`;
+            }
+            return value || '';
+          }).join(",")
+        ).join("\n");
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `${filename}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  },
+
+  exportToJSON: (data: any, filename: string) => {
+    const jsonContent = "data:text/json;charset=utf-8," + JSON.stringify(data, null, 2);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodeURI(jsonContent));
+    link.setAttribute("download", `${filename}_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+};
+
+// --- ARCHITECTURAL REFACTORING: useDashboardData HOOK ---
+
+const useDashboardData = () => {
+  const [currentUser, setCurrentUser] = useState<SecureUser | null>(null);
+  const [stats, setStats] = useState<RealDashboardStats>({
+    totalTasks: 0, completedTasks: 0, pendingTasks: 0, inProgressTasks: 0, overdueTasks: 0,
+    totalStudyTime: 0, todayStudyTime: 0, weeklyStudyTime: 0, monthlyStudyTime: 0,
+    averageGrade: 0, totalGrades: 0, upcomingClasses: 0, totalNotes: 0, favoritedNotes: 0,
+    totalCourses: 0, activeCourses: 0, completionRate: 0, studyStreak: 0, highPriorityTasks: 0,
+    completedToday: 0, averageSessionLength: 0, bestPerformingSubject: 'None', worstPerformingSubject: 'None',
+    totalStudySessions: 0, productivityScore: 0, incompleteTasksCount: 0, topGradePercentage: 0, totalClassesCount: 0
+  });
+  const [recentTasks, setRecentTasks] = useState<RealTask[]>([]);
+  const [recentSessions, setRecentSessions] = useState<RealStudySession[]>([]);
+  const [recentGrades, setRecentGrades] = useState<RealGrade[]>([]);
+  const [recentNotes, setRecentNotes] = useState<RealNote[]>([]);
+  const [courses, setCourses] = useState<RealCourse[]>([]);
+  const [timetable, setTimetable] = useState<RealTimetableEntry[]>([]);
+  const [analytics, setAnalytics] = useState<RealAnalytics>({
+    dailyStudyTime: [], subjectBreakdown: [], weeklyProgress: [], monthlyTrends: [],
+    gradeDistribution: [], sessionTypes: [], incompleteTasksCount: 0, topGrades: [], totalClasses: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [securityVerified, setSecurityVerified] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const { toast } = useToast();
+  const retryCountRef = useRef(0);
+  const maxRetries = 3;
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+
+  const handleSecureTaskUpdate = useCallback((data: any) => {
+    const { eventType, new: newData, old: oldData } = data;
+    
+    if (newData && newData.user_id !== currentUser?.id) return;
+    if (oldData && oldData.user_id !== currentUser?.id) return;
+    
+    setRecentTasks(prev => {
+      let updated = [...prev];
+      const index = updated.findIndex(task => task.id === (newData?.id || oldData?.id));
+      
+      switch (eventType) {
+        case 'INSERT':
+          if (newData && index === -1) { // Prevent duplicates from optimistic updates
+            updated.unshift(newData);
+          }
+          break;
+        case 'UPDATE':
+          if (index !== -1 && newData) {
+            updated[index] = newData;
+          }
+          break;
+        case 'DELETE':
+          if (index !== -1) {
+            updated.splice(index, 1);
+          }
+          break;
+      }
+      
+      return updated.slice(0, 20);
+    });
+
+    if (eventType === 'UPDATE' && newData?.status === 'completed') {
+      toast({
+        title: "Task Completed! 🎉",
+        description: `Great job completing "${newData.title}"`,
+        className: "bg-gray-900/50 backdrop-blur-md border border-emerald-500/60 shadow-lg rounded-xl p-4 text-emerald-300 font-semibold"
+      });
+    }
+  }, [toast, currentUser]);
+
+  const handleSecureSessionUpdate = useCallback((data: any) => {
+    const { eventType, new: newData } = data;
+    if (newData && newData.user_id !== currentUser?.id) return;
+    if (eventType === 'INSERT' && newData) {
+      setRecentSessions(prev => [newData, ...prev].slice(0, 10));
+      toast({
+        title: "Study Session Recorded! 📚",
+        description: `${Math.floor((newData.duration || 0) / 60)}h ${(newData.duration || 0) % 60}m session added`,
+        className: "bg-gray-900/50 backdrop-blur-md border border-blue-500/60 shadow-lg rounded-xl p-4 text-blue-300 font-semibold",
+      });
+    }
+  }, [toast, currentUser]);
+
+  const handleSecureGradeUpdate = useCallback((data: any) => {
+    const { eventType, new: newData } = data;
+    if (newData && newData.user_id !== currentUser?.id) return;
+    if (eventType === 'INSERT' && newData) {
+      setRecentGrades(prev => [newData, ...prev].slice(0, 10));
+      toast({
+        title: "New Grade Added! 📊",
+        description: `${newData.assignment_name}: ${(newData.percentage || 0).toFixed(1)}%`,
+        className: `bg-gray-900/50 backdrop-blur-md border shadow-lg rounded-xl p-4 font-semibold ${
+          (newData.percentage || 0) >= 90 ? 'border-emerald-400/50' :
+          (newData.percentage || 0) >= 70 ? 'border-yellow-400/50' :
+          'border-red-400/50'
+        }`,
+      });
+    }
+  }, [toast, currentUser]);
+
+  const handleSecureNoteUpdate = useCallback((data: any) => {
+    const { eventType, new: newData } = data;
+    if (newData && newData.user_id !== currentUser?.id) return;
+    if (eventType === 'INSERT' && newData) {
+      setRecentNotes(prev => [newData, ...prev].slice(0, 10));
+    }
+  }, [currentUser]);
+
+  const initializeDashboard = useCallback(async () => {
+    try {
+      setLoading(true);
+      const user = await secureDataHelpers.getCurrentUser();
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to access your dashboard.",
+          className: "bg-gray-900/50 backdrop-blur-md border border-red-500/60 shadow-lg rounded-xl p-4 text-red-300 font-semibold",
+        });
+        setSecurityVerified(true);
+        setLoading(false);
+        return;
+      }
+
+      setCurrentUser(user);
+      setSecurityVerified(true);
+      
+      const userData = await secureDataHelpers.fetchAllUserData(user.id);
+      const analyticsData = await secureDataHelpers.calculateSecureAnalytics(user.id);
+
+      if (userData.errors && userData.errors.length > 0) {
+        console.error('Some data failed to load:', userData.errors);
+        toast({
+          title: "Partial Data Load",
+          description: "Some data may not be fully loaded. This is normal for new users.",
+          className: "bg-gray-900/50 backdrop-blur-md border border-yellow-500/60 shadow-lg rounded-xl p-4 text-yellow-300 font-semibold"
+        });
+      }
+
+      const secureStats = secureDataHelpers.calculateSecureStats(userData);
+      
+      setStats(secureStats);
+      setRecentTasks(Array.isArray(userData.tasks) ? userData.tasks.slice(0, 20) : []);
+      setRecentSessions(Array.isArray(userData.studySessions) ? userData.studySessions.slice(0, 10) : []);
+      setRecentGrades(Array.isArray(userData.grades) ? userData.grades.slice(0, 10) : []);
+      setRecentNotes(Array.isArray(userData.notes) ? userData.notes.slice(0, 10) : []);
+      setCourses(Array.isArray(userData.courses) ? userData.courses : []);
+      setTimetable(Array.isArray(userData.timetable) ? userData.timetable : []);
+      setAnalytics(analyticsData);
+
+      if (unsubscribeRef.current) unsubscribeRef.current();
+      
+      unsubscribeRef.current = secureDataHelpers.setupSecureRealTimeSubscription(
+        user.id,
+        {
+          onTaskUpdate: handleSecureTaskUpdate,
+          onSessionUpdate: handleSecureSessionUpdate,
+          onGradeUpdate: handleSecureGradeUpdate,
+          onNoteUpdate: handleSecureNoteUpdate
+        }
+      );
+
+      toast({
+        title: "Dashboard Loaded Successfully! 🔒",
+        description: `Welcome back, ${user.profile?.full_name}! Your secure data is loaded.`,
+        className: "bg-gray-900/50 backdrop-blur-md border border-emerald-500/60 shadow-lg rounded-xl p-4 text-emerald-300 font-semibold"
+      });
+
+    } catch (error) {
+      console.error('Error initializing dashboard:', error);
+      toast({
+        title: "Dashboard Load Error",
+        description: `Failed to load dashboard data. ${retryCountRef.current < maxRetries ? 'Retrying...' : 'Please refresh the page.'}`,
+        className: "bg-gray-900/50 backdrop-blur-md border border-red-500/60 shadow-lg rounded-xl p-4 text-red-300 font-semibold"
+      });
+      
+      if (retryCountRef.current < maxRetries) {
+        retryCountRef.current++;
+        setTimeout(initializeDashboard, 2000 * retryCountRef.current);
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [toast, handleSecureTaskUpdate, handleSecureSessionUpdate, handleSecureGradeUpdate, handleSecureNoteUpdate]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const handleOnlineStatus = () => setIsOnline(navigator.onLine);
+    const handleOfflineStatus = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnlineStatus);
+    window.addEventListener('offline', handleOfflineStatus);
+
+    if (isMounted) {
+      initializeDashboard();
+    }
+
+    return () => {
+      isMounted = false;
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+      }
+      window.removeEventListener('online', handleOnlineStatus);
+      window.removeEventListener('offline', handleOfflineStatus);
+    };
+  }, [initializeDashboard]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await initializeDashboard();
+  };
+
+  const handleCreateQuickTask = async () => {
+    if (!currentUser) return;
+    try {
+      const newTask = await secureDataHelpers.createQuickTask(currentUser.id);
+      setRecentTasks(prev => [newTask, ...prev]); // Instantly update UI
+      toast({
+        title: "Task Created ✅",
+        description: "New task has been added to your list.",
+        className: "bg-gray-900/50 backdrop-blur-md border border-emerald-500/60 shadow-lg rounded-xl p-4 text-emerald-300 font-semibold flex items-center space-x-3",
+        icon: <Plus className="w-5 h-5 text-emerald-400" />,
+      });
+    } catch (error) {
+      toast({
+        title: "Creation Failed",
+        description: "Failed to create task",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleTaskStatusUpdate = async (taskId: string, newStatus: string) => {
+    if (!currentUser) return;
+    
+    const originalTask = recentTasks.find(task => task.id === taskId);
+    if (!originalTask) return;
+
+    setRecentTasks(prev => 
+      prev.map(task => 
+        task.id === taskId ? { ...task, status: newStatus as any } : task
+      )
+    );
+
+    try {
+      await secureDataHelpers.updateTaskStatus(taskId, newStatus, currentUser.id);
+      toast({
+        title: "Task Updated ✅",
+        description: `Task marked as ${newStatus}`,
+        className: "bg-gray-900/50 backdrop-blur-md border border-emerald-500/60 shadow-lg rounded-xl p-4 text-emerald-300 font-semibold",
+      });
+    } catch (error) {
+      setRecentTasks(prev => 
+        prev.map(task => 
+          task.id === taskId ? originalTask : task
+        )
+      );
+      toast({
+        title: "Update Failed",
+        description: "Failed to update task status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return {
+    currentUser,
+    stats,
+    recentTasks,
+    setRecentTasks,
+    recentSessions,
+    recentGrades,
+    recentNotes,
+    courses,
+    timetable,
+    analytics,
+    loading,
+    securityVerified,
+    isOnline,
+    refreshing,
+    handleRefresh,
+    handleCreateQuickTask,
+    handleTaskStatusUpdate,
+  };
+};
+
+// --- ADVANCED HOOKS & COMPONENTS FOR 2030 ---
+
+const MagneticButton = ({ children, ...props }: { children: ReactNode } & React.ComponentProps<typeof motion.button>) => {
+  const ref = useRef<HTMLButtonElement>(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const xSpring = useSpring(x, { stiffness: 150, damping: 15, mass: 0.1 });
+  const ySpring = useSpring(y, { stiffness: 150, damping: 15, mass: 0.1 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!ref.current) return;
+    const { left, top, width, height } = ref.current.getBoundingClientRect();
+    const centerX = left + width / 2;
+    const centerY = top + height / 2;
+    const mouseX = e.clientX - centerX;
+    const mouseY = e.clientY - centerY;
+    x.set(mouseX * 0.15);
+    y.set(mouseY * 0.15);
+  };
+
+  const handleMouseLeave = () => {
+    x.set(0);
+    y.set(0);
+  };
+
+  return (
+    <motion.button ref={ref} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave} style={{ x: xSpring, y: ySpring }} {...props}>
+      {children}
+    </motion.button>
+  );
+};
+
+const useMousePosition = () => {
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  useEffect(() => {
+    const updateMousePosition = (ev: MouseEvent) => {
+      x.set(ev.clientX);
+      y.set(ev.clientY);
+    };
+    window.addEventListener('mousemove', updateMousePosition);
+    return () => window.removeEventListener('mousemove', updateMousePosition);
+  }, [x, y]);
+
+  return { x, y };
+};
+
+const useDebounce = <T>(value: T, delay: number): T => {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+};
+
+// Modern "Aurora" background component for 2026
+const AuroraBackground = () => {
+  return (
+    <div className="absolute inset-0 -z-10 overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-full">
+        <motion.div
+          className="absolute top-[-20%] left-[-20%] w-[40vw] h-[40vw] bg-purple-600/20 rounded-full blur-3xl"
+          animate={{ x: [0, 100, 0], y: [0, 50, 0] }}
+          transition={{ duration: 20, repeat: Infinity, repeatType: 'mirror' }}
+        />
+        <motion.div
+          className="absolute bottom-[-20%] right-[-20%] w-[50vw] h-[50vw] bg-blue-600/20 rounded-full blur-3xl"
+          animate={{ x: [0, -100, 0], y: [0, -50, 0] }}
+          transition={{ duration: 25, repeat: Infinity, repeatType: 'mirror', delay: 5 }}
+        />
+        <motion.div
+          className="absolute top-[10%] right-[10%] w-[30vw] h-[30vw] bg-emerald-600/10 rounded-full blur-3xl"
+          animate={{ x: [0, -50, 0], y: [0, 50, 0] }}
+          transition={{ duration: 30, repeat: Infinity, repeatType: 'mirror', delay: 10 }}
+        />
+      </div>
+    </div>
+  );
+};
+
+// --- 6TH GENERATION UI COMPONENTS (2026+) ---
+
+const GlareEffect = () => (
+  <motion.div
+    className="absolute top-0 left-0 w-full h-full overflow-hidden rounded-3xl pointer-events-none"
+    style={{ transform: "translateZ(50px)" }}
+  >
+    <div className="absolute w-96 h-96 bg-white/10 -top-1/2 -left-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+      style={{
+        transform: 'rotate(45deg)',
+        filter: 'blur(50px)',
+      }}
+    />
+  </motion.div>
+);
+
+const TiltCard = ({ children, className }: { children: ReactNode, className?: string }) => {
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const mouseXSpring = useSpring(x, { stiffness: 300, damping: 20 });
+  const mouseYSpring = useSpring(y, { stiffness: 300, damping: 20 });
+
+  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["17.5deg", "-17.5deg"]);
+  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-17.5deg", "17.5deg"]);
+
+  const handleMouseMove = (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+    const xPct = mouseX / width - 0.5;
+    const yPct = mouseY / height - 0.5;
+    x.set(xPct);
+    y.set(yPct);
+  };
+
+  const handleMouseLeave = () => {
+    x.set(0);
+    y.set(0);
+  };
+
+  return (
+    <motion.div
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        rotateX,
+        rotateY,
+        transformStyle: "preserve-3d",
+      }}
+      transition={{ type: 'spring' }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }: { isOpen: boolean, onClose: () => void, onConfirm: () => void, title: string, message: string }) => {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: 30 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 30 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            className="bg-black/50 border border-white/20 rounded-2xl p-8 max-w-md w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-2xl font-bold text-white mb-4">{title}</h2>
+            <p className="text-white/70 mb-8">{message}</p>
+            <div className="flex justify-end gap-4">
+              <button onClick={onClose} className="px-6 py-2 rounded-lg text-white/80 hover:bg-white/10 transition-colors">Cancel</button>
+              <button onClick={onConfirm} className="px-6 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors shadow-soft-light active:shadow-inner-soft">Confirm</button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+const ParallaxBackground = () => {
+  const { x, y } = useMousePosition();
+  const xOffset = useTransform(x, value => (value - window.innerWidth / 2) / 40);
+  const yOffset = useTransform(y, value => (value - window.innerHeight / 2) / 40);
+
+  return (
+    <motion.div className="fixed inset-0 -z-20" style={{ x: xOffset, y: yOffset }}>
+      <AuroraBackground />
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20width%3D%2232%22%20height%3D%2232%22%20fill%3D%22none%22%20stroke%3D%22rgb(255%20255%20255%20%2F%200.05)%22%3E%3Cpath%20d%3D%22M0%20.5H31.5V32%22%2F%3E%3C%2Fsvg%3E')] opacity-50" />
+    </motion.div>
+  );
+};
+
+// --- ENHANCED SKELETON & TASK COMPONENTS FOR 2026 ---
+
+const SkeletonCard = ({ className }: { className?: string }) => (
+  <div className={`bg-black/20 p-6 rounded-3xl border border-white/10 animate-pulse shadow-inner-soft ${className}`}>
+    <div className="h-10 w-10 bg-white/10 rounded-2xl mb-6"></div>
+    <div className="h-8 w-3/4 bg-white/10 rounded-lg mb-3"></div>
+    <div className="h-4 w-1/2 bg-white/10 rounded-lg"></div>
+  </div>
+);
+
+const DashboardSkeleton = () => (
+  <div className="min-h-screen bg-[#0A0A0A] text-gray-300 relative overflow-hidden p-6">
+    <AuroraBackground />
+    <div className="max-w-7xl mx-auto">
+      {/* Header Skeleton */}
+      <div className="flex items-center justify-between mb-8 h-20">
+        <div className="h-16 w-48 bg-white/[.04] rounded-2xl animate-pulse"></div>
+        <div className="flex items-center gap-4">
+          <div className="h-16 w-64 bg-white/[.04] rounded-2xl animate-pulse"></div>
+          <div className="h-14 w-14 bg-white/[.04] rounded-2xl animate-pulse"></div>
+        </div>
+      </div>
+      {/* Title Skeleton */}
+      <div className="mb-12">
+        <div className="h-6 w-1/4 bg-black/20 rounded animate-pulse mb-4"></div>
+        <div className="h-16 w-1/2 bg-black/20 rounded-lg animate-pulse mb-4"></div>
+        <div className="h-5 w-1/3 bg-black/20 rounded animate-pulse"></div>
+      </div>
+      {/* Stats Grid Skeleton */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 mb-12">
+        {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
+      </div>
+      {/* Main Content Skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+        <div className="lg:col-span-2 bg-black/20 backdrop-blur-xl p-8 rounded-3xl border border-white/10 animate-pulse">
+          <div className="h-8 w-1/3 bg-white/10 rounded mb-6"></div>
+          <div className="flex gap-4 mb-6">
+            <div className="h-12 flex-1 bg-white/10 rounded-xl"></div>
+            <div className="h-12 w-32 bg-white/10 rounded-xl"></div>
+            <div className="h-12 w-32 bg-white/10 rounded-xl"></div>
+          </div>
+          <div className="space-y-5">
+            {[...Array(3)].map((_, i) => <div key={i} className="h-24 bg-white/10 rounded-2xl"></div>)}
+          </div>
+        </div>
+        <div className="bg-black/20 backdrop-blur-xl p-8 rounded-3xl border border-white/10 animate-pulse">
+          <div className="h-8 w-1/2 bg-white/10 rounded mb-8"></div>
+          <div className="space-y-6">
+            <div className="h-20 bg-white/10 rounded-xl"></div>
+            <div className="h-20 bg-white/10 rounded-xl"></div>
+            <div className="h-32 bg-white/10 rounded-xl"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+interface TaskItemProps {
+  task: RealTask;
+  isSelected: boolean;
+  onSelect: (id: string) => void;
+  onStatusUpdate: (id: string, status: string) => void;
+  onDelete: (id: string) => void;
+  getPriorityClasses: (priority: string) => string;
+  getStatusBorderColor: (status: string) => string;
+  formatDate: (date: string) => string;
+}
+
+const TaskItem: React.FC<TaskItemProps> = React.memo(({
+  task,
+  isSelected,
+  onSelect,
+  onStatusUpdate,
+  onDelete,
+  getPriorityClasses,
+  getStatusBorderColor,
+  formatDate
+}) => {
+  const dragControls = useDragControls();
+  return (
+    <Reorder.Item
+      value={task}
+      dragListener={false}
+      dragControls={dragControls}
+      className={`p-5 rounded-2xl border ${getStatusBorderColor(task.status)} bg-black/20 backdrop-blur-sm
+        hover:bg-black/30 transition-all duration-300 group relative
+        ${isSelected ? 'ring-2 ring-emerald-400 shadow-lg shadow-emerald-500/20' : 'border-white/10'}
+      `}
+      whileHover={{ y: -5, scale: 1.03 }}
+    >
+      <div className="flex items-start space-x-4">
+        <div onPointerDown={(e) => dragControls.start(e)} className="pt-1.5 text-white/30 cursor-grab active:cursor-grabbing group-hover:text-white/50 transition-colors">
+          <GripVertical size={20} />
+        </div>
+
+        {/* Selection checkbox */}
+        <motion.button
+          onClick={() => onSelect(task.id)}
+          className={`w-6 h-6 mt-1 rounded-md border-2 flex items-center justify-center transition-all duration-200 ${
+            isSelected
+              ? 'bg-emerald-500 border-emerald-500'
+              : 'border-white/30 hover:border-emerald-400'
+          }`}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+        >
+          {isSelected && (
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
+              <CheckSquare className="w-4 h-4 text-white" />
+            </motion.div>
+          )}
+        </motion.button>
+
+        {/* Task content */}
+        <div className="flex-1">
+          <div className="font-bold text-white mb-2 text-xl group-hover:text-emerald-300 transition-colors">
+            {task.title}
+          </div>
+          {task.description && (
+            <p className="text-sm text-white/60 mb-4 max-w-prose">
+              {task.description}
+            </p>
+          )}
+          
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className={`text-xs px-3 py-1 rounded-full font-semibold border ${getPriorityClasses(task.priority)}`}>
+              {task.priority} priority
+            </span>
+            
+            {task.due_date && (
+              <span className={`text-xs flex items-center gap-1.5 px-3 py-1 rounded-full font-semibold ${
+                new Date(task.due_date) < new Date() && task.status !== 'completed'
+                  ? 'text-red-300 bg-red-900/50 border border-red-500/40'
+                  : 'text-white/70 bg-white/10 border border-white/20'
+              }`}>
+                <Calendar className="w-3.5 h-3.5" />
+                Due: {formatDate(task.due_date)}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex flex-col items-center space-y-2">
+          <motion.button
+            onClick={() => onStatusUpdate(task.id, task.status === 'completed' ? 'pending' : 'completed')}
+            className={`w-10 h-10 rounded-lg border flex items-center justify-center transition-all duration-300 ${
+              task.status === 'completed' 
+                ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' 
+                : 'border-white/20 hover:border-emerald-500/50 hover:bg-emerald-500/10 text-white/70 hover:text-emerald-400'
+            }`}
+            whileHover={{ scale: 1.1, rotate: task.status === 'completed' ? 0 : 10 }}
+            whileTap={{ scale: 0.9 }}
+            title="Toggle Complete"
+          >
+            <CheckSquare className="w-5 h-5" />
+          </motion.button>
+
+          <motion.button
+            onClick={() => onDelete(task.id)}
+            className="w-10 h-10 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-all duration-300 flex items-center justify-center opacity-50 group-hover:opacity-100"
+            whileHover={{ scale: 1.1, rotate: -10 }}
+            whileTap={{ scale: 0.9 }}
+            title="Delete Task"
+          >
+            <Trash2 className="w-5 h-5" />
+          </motion.button>
+        </div>
+      </div>
+    </Reorder.Item>
+  );
+});
+
+// Main Dashboard Component with Fixed Queries
+const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
+  const {
+    currentUser,
+    stats,
+    recentTasks,
+    setRecentTasks,
+    recentSessions,
+    recentGrades,
+    recentNotes,
+    courses,
+    timetable,
+    analytics,
+    loading,
+    securityVerified,
+    isOnline,
+    refreshing,
+    handleRefresh,
+    handleCreateQuickTask,
+    handleTaskStatusUpdate,
+  } = useDashboardData();
+  
+  const [filteredTasks, setFilteredTasks] = useState<RealTask[]>([]);
+  const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
+  const [taskFilter, setTaskFilter] = useState<'all' | 'pending' | 'completed' | 'overdue'>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'date' | 'priority' | 'name'>('date');
+  
+  const [isCommandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [modalState, setModalState] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const { toast } = useToast();
+
+  // Task filtering and search
+  useEffect(() => {
+    let filtered = [...recentTasks];
+
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(task => 
+        task.title.toLowerCase().includes(searchLower) ||
+        (task.description && task.description.toLowerCase().includes(searchLower)) ||
+        (task.courses?.name && task.courses.name.toLowerCase().includes(searchLower))
+      );
+    }
+
+    switch (taskFilter) {
+      case 'pending':
+        filtered = filtered.filter(task => task.status === 'pending');
+        break;
+      case 'completed':
+        filtered = filtered.filter(task => task.status === 'completed');
+        break;
+      case 'overdue':
+        filtered = filtered.filter(task => 
+          task.due_date && new Date(task.due_date) < new Date() && task.status !== 'completed'
+        );
+        break;
+    }
+
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'priority':
+          const priorityOrder = { high: 3, medium: 2, low: 1 };
+          return (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+        case 'name':
+          return a.title.localeCompare(b.title);
+        case 'date':
+        default:
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+    });
+
+    setFilteredTasks(filtered);
+  }, [recentTasks, searchTerm, taskFilter, sortBy]);
+
+  // Command Palette listener
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setCommandPaletteOpen((open) => !open);
+      }
+    };
+    document.addEventListener('keydown', down);
+    return () => document.removeEventListener('keydown', down);
+  }, []);
+
+  const handleDeleteTask = async (taskId: string) => {
+    setModalState({
+      isOpen: true,
+      title: 'Delete Task',
+      message: 'Are you sure you want to permanently delete this task? This action cannot be undone.',
+      onConfirm: async () => {
+        if (!currentUser) return;
+
+        const taskToDelete = recentTasks.find(task => task.id === taskId);
+        if (!taskToDelete) return;
+        
+        setRecentTasks(prev => prev.filter(task => task.id !== taskId));
+        setModalState({ ...modalState, isOpen: false });
+
+        try {
+          await secureDataHelpers.deleteTask(taskId, currentUser.id);
+          toast({
+            title: "Task Deleted 🗑️",
+            description: "Task deleted successfully",
+            className: "bg-gray-900/50 backdrop-blur-md border border-blue-500/60 shadow-lg rounded-xl p-4 text-blue-300 font-semibold flex items-center space-x-3",
+            icon: <Trash2 className="w-5 h-5 text-blue-400" />,
+          });
+        } catch (error) {
+          setRecentTasks(prev => [taskToDelete, ...prev]);
+          toast({
+            title: "Delete Failed",
+            description: "Failed to delete task",
+            variant: "destructive",
+          });
+        }
+      },
+    });
+  };
+
+  const handleBulkAction = async (action: 'complete' | 'delete' | 'export') => {
+    if (!currentUser || selectedTasks.length === 0) return;
+
+    switch (action) {
+      case 'complete':
+        try {
+          await secureDataHelpers.bulkUpdateTasks(selectedTasks, { status: 'completed' }, currentUser.id);
+          setRecentTasks(prev => 
+            prev.map(task => 
+              selectedTasks.includes(task.id) ? { ...task, status: 'completed' } : task
+            )
+          );
+ toast({
+  title: "Bulk Update Complete ✅",
+  description: `${selectedTasks.length} tasks marked as completed`,
+  className: "bg-gray-900/50 backdrop-blur-md border border-emerald-500/60 shadow-lg rounded-xl p-4 text-emerald-300 font-semibold",
+});
+
+        } catch (error) {
+          toast({
+            title: "Bulk Update Failed",
+            description: "Failed to update selected tasks",
+            variant: "destructive",
+          });
+        }
+        break;
+
+      case 'delete':
+        setModalState({
+          isOpen: true,
+          title: `Delete ${selectedTasks.length} Tasks`,
+          message: `Are you sure you want to permanently delete these ${selectedTasks.length} tasks? This action cannot be undone.`,
+          onConfirm: async () => {
+            try {
+              await Promise.all(selectedTasks.map(id => secureDataHelpers.deleteTask(id, currentUser.id)));
+              setRecentTasks(prev => prev.filter(task => !selectedTasks.includes(task.id)));
+              
+              toast({
+                title: "Bulk Delete Complete 🗑️",
+                description: `${selectedTasks.length} tasks deleted`,
+                className: "bg-gray-900/50 backdrop-blur-md border border-blue-500/60 shadow-lg rounded-xl p-4 text-blue-300 font-semibold flex items-center space-x-3",
+                icon: <Trash2 className="w-5 h-5 text-blue-400" />,
+              });
+            } catch (error) {
+              toast({
+                title: "Bulk Delete Failed",
+                description: "Failed to delete selected tasks",
+                variant: "destructive",
+              });
+            } finally {
+              setModalState({ ...modalState, isOpen: false });
+              setSelectedTasks([]);
+            }
+          },
+        });
+        break;
+
+      case 'export':
+        const tasksToExport = recentTasks.filter(task => selectedTasks.includes(task.id));
+        secureDataHelpers.exportToCSV(tasksToExport, 'selected_tasks');
+toast({
+  title: "Export Complete 📁",
+  description: `${selectedTasks.length} tasks exported to CSV`,
+  className: "bg-gray-900/50 backdrop-blur-md border border-indigo-500/60 shadow-lg rounded-xl p-4 text-indigo-300 font-semibold flex items-center space-x-3",
+  icon: <Download className="w-5 h-5 text-indigo-400" />,
+});
+
+        break;
+    }
+    if (action !== 'delete') setSelectedTasks([]);
+  };
+
+  const handleExportData = (type: 'csv' | 'json') => {
+    const data = {
+      tasks: recentTasks,
+      sessions: recentSessions,
+      grades: recentGrades,
+      notes: recentNotes,
+      courses: courses,
+      timetable: timetable,
+      stats,
+      analytics,
+      exportedAt: new Date().toISOString(),
+      user: currentUser?.profile?.full_name || 'User'
+    };
+
+    switch (type) {
+      case 'csv':
+        secureDataHelpers.exportToCSV(recentTasks, 'dashboard_tasks');
+        break;
+      case 'json':
+        secureDataHelpers.exportToJSON(data, 'dashboard_data');
+        break;
+    }
+  };
+
+  // Utility functions
+  const taskStats = useMemo(() => {
+    const overdueTasks = filteredTasks.filter(task => 
+      task.due_date && new Date(task.due_date) < new Date() && task.status !== 'completed'
+    ).length;
+    
+    const highPriorityTasks = filteredTasks.filter(task => 
+      task.priority === 'high' && task.status !== 'completed'
+    ).length;
+
+    return { overdueTasks, highPriorityTasks };
+  }, [filteredTasks]);
+
+  const getPriorityClasses = (priority: string) => {
+    switch (priority) {
+      case 'high':
+        return 'text-red-400 bg-red-900/50 border-red-500/30';
+      case 'medium':
+        return 'text-yellow-400 bg-yellow-900/50 border-yellow-500/30';
+      case 'low':
+        return 'text-green-400 bg-green-900/50 border-green-500/30';
+      default:
+        return 'text-gray-400 bg-gray-700/50 border-gray-500/30';
+    }
+  };
+
+  const getStatusBorderColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'border-emerald-500/50';
+      case 'in_progress':
+        return 'border-amber-500/50';
+      case 'pending':
+        return 'border-blue-500/50';
+      default:
+        return 'border-gray-600/50';
+    }
+  };
+
+  const formatTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  // Loading state
+  if (loading || !securityVerified) {
+    return (
+      // Use the new Skeleton UI for a better loading experience
+      <DashboardSkeleton />
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center relative overflow-hidden">
+        <motion.div
+          className="bg-white/5 backdrop-blur-md rounded-3xl p-12 border border-red-400/20 text-center relative z-10 max-w-md mx-4"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, type: "spring" }}
+        >
+          <AlertCircle className="w-20 h-20 text-red-400 mx-auto mb-6" />
+          <h2 className="text-2xl font-bold text-white mb-4">Authentication Required</h2>
+          <p className="text-white/70 mb-8">Please log in to access your secure dashboard.</p>
+          <div className="flex items-center justify-center space-x-2 text-sm text-white/60">
+            <Shield className="w-4 h-4" />
+            <span>All data is securely encrypted and user-isolated</span>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0A0A0A] text-gray-300 relative overflow-hidden transition-colors duration-300 [transform-style:preserve-3d]">
+      {/* Advanced Background Effects */}
+      <ParallaxBackground />
+
+      {/* Command Palette */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        onNavigate={onNavigate}
+        onAction={async (action) => {
+          if (action === 'logout') {
+            supabase.auth.signOut();
+          } else if (action === 'createTask') {
+            await handleCreateQuickTask();
+          }
+        }}
+      />
+      <ConfirmationModal
+        isOpen={modalState.isOpen}
+        onClose={() => setModalState({ ...modalState, isOpen: false })}
+        onConfirm={modalState.onConfirm}
+        title={modalState.title}
+        message={modalState.message}
+      />
+      <div className="relative z-10 p-6" style={{ transform: 'perspective(2000px)' }}>
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: -30 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center justify-between mb-8"
+          >
+            <div className="flex items-center space-x-6">
+              <motion.div className="relative" whileHover={{ scale: 1.05 }}>
+                <div className="bg-white/10 backdrop-blur-sm p-3 rounded-2xl shadow-lg flex items-center justify-center">
+                  <img
+                    src={logo}
+                    alt="VSAV GyanVedu Logo"
+                    className="h-12 object-contain"
+                    draggable={false}
+                  />
+                </div>
+              </motion.div>
+
+              <div className="flex items-center space-x-4">
+                <MagneticButton
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="p-3 bg-black/20 backdrop-blur-sm border border-white/10 rounded-xl transition-all duration-200 disabled:opacity-50 shadow-soft-light active:shadow-inner-soft hover:border-emerald-400/50"
+                  title="Refresh Data"
+                >
+                  <RefreshCw className={`w-5 h-5 text-emerald-400 ${refreshing ? 'animate-spin' : ''}`} />
+                </MagneticButton>
+
+                <div className="flex items-center space-x-2">
+                  {isOnline ? (
+                    <Wifi className="w-4 h-4 text-emerald-400" />
+                  ) : (
+                    <WifiOff className="w-4 h-4 text-red-400" />
+                  )}
+                  <span className={`text-sm font-medium ${isOnline ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {isOnline ? 'Live Sync' : 'Offline'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              {/* Export dropdown */}
+              <div className="relative group">
+                <MagneticButton
+                  className="p-3 bg-black/20 backdrop-blur-sm border border-white/10 rounded-xl transition-all duration-200 shadow-soft-light active:shadow-inner-soft hover:border-blue-400/50"
+                >
+                  <Download className="w-5 h-5 text-blue-400" />
+                </MagneticButton>
+                
+                <div className="absolute right-0 top-full mt-2 w-48 bg-black/50 backdrop-blur-xl rounded-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50 shadow-2xl">
+                  <div className="p-2">
+                    <button
+                      onClick={() => handleExportData('json')}
+                      className="w-full text-left px-3 py-2 text-sm text-white hover:bg-white/10 rounded-lg transition-colors"
+                    >
+                      Export Data as JSON
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* User info */}
+              <motion.div
+                className="flex items-center space-x-4 bg-black/20 backdrop-blur-sm rounded-2xl px-6 py-3 border border-emerald-400/30 shadow-soft-light"
+                whileHover={{ scale: 1.03, y: -2 }}
+              >
+                <div className="relative">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center">
+                    <UserIcon className="w-6 h-6 text-white" />
+                  </div>
+                  <motion.div
+                    className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-black/50"
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  />
+                </div>
+
+                <div>
+                  <div className="text-white font-semibold text-sm">
+                    {currentUser.profile?.full_name || "User"}
+                  </div>
+                  <div className="text-emerald-400 text-xs font-bold uppercase flex items-center gap-1">
+                    <Shield className="w-3 h-3" />
+                    SECURE • {currentUser.profile?.user_type || "STUDENT"}
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.button
+                onClick={async () => {
+                  const { error } = await supabase.auth.signOut();
+                  if (error) {
+                    toast({
+                      title: "Logout Failed",
+                      description: "Failed to logout",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                className="p-4 bg-black/20 backdrop-blur-sm border border-white/10 rounded-2xl text-red-400 transition-all duration-300 shadow-soft-light active:shadow-inner-soft hover:border-red-500/50 hover:text-red-300"
+                whileHover={{ scale: 1.1 }}
+              >
+                <LogOut className="w-6 h-6" />
+              </motion.button>
+            </div>
+          </motion.div>
+
+          {/* Title Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center justify-between mb-12"
+          >
+            <div className="flex-1">
+              <motion.div
+                className="flex items-center gap-4 mb-4"
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <h1 className="text-xl font-medium text-white/80 uppercase tracking-wider">
+                  YOUR LIVE DASHBOARD
+                </h1>
+                <motion.div
+                  animate={{ 
+                    rotate: [0, 360],
+                    scale: [1, 1.1, 1]
+                  }}
+                  transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                >
+                  <Shield className="w-6 h-6 text-emerald-400" />
+                </motion.div>
+                <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/20 rounded-full border border-emerald-400/30">
+                  <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                  <span className="text-emerald-400 text-xs font-bold">LIVE SYNC</span>
+                </div>
+              </motion.div>
+              
+              <motion.h2 
+                className="text-6xl font-black mb-4 bg-gradient-to-r from-white via-blue-200 to-purple-300 bg-clip-text text-transparent"
+                initial={{ opacity: 0, x: -50, textShadow: '0 0 10px rgba(255,255,255,0.3)' }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                DASHBOARD
+              </motion.h2>
+              
+              <motion.p 
+                className="text-white/70 text-xl"
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                YOUR DATA: <span className="text-blue-400 font-semibold">{stats.totalTasks} tasks</span>, 
+                <span className="text-purple-400 font-semibold"> {stats.totalCourses} courses</span>, and
+                <span className="text-emerald-400 font-semibold"> {stats.totalStudySessions} study sessions</span>
+              </motion.p>
+            </div>
+          </motion.div>
+
+          {/* Statistics Grid */}
+          <motion.div
+            variants={{
+              hidden: { opacity: 0 },
+              show: {
+                opacity: 1,
+                transition: { staggerChildren: 0.07 }
+              }
+            }}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 mb-12"
+          >
+            {[
+              { 
+                label: 'Total Tasks', 
+                value: stats.totalTasks.toString(), 
+                icon: CheckSquare, 
+                color: 'from-blue-500 to-cyan-600',
+                subtitle: `${stats.completedTasks} completed`
+              },
+              { 
+                label: 'Study Streak', 
+                value: `${stats.studyStreak} days`, 
+                icon: Flame, 
+                color: 'from-orange-500 to-red-600',
+                subtitle: 'consecutive days'
+              },
+              { 
+                label: 'Today\'s Study', 
+                value: formatTime(stats.todayStudyTime),
+                icon: ClockIcon, 
+                color: 'from-green-500 to-emerald-600',
+                subtitle: 'minutes today'
+              },
+              { 
+                label: 'Productivity', 
+                value: `${stats.productivityScore}%`, 
+                icon: TrendingUp, 
+                color: 'from-purple-500 to-pink-600',
+                subtitle: 'completion rate'
+              },
+              { 
+                label: 'Active Courses', 
+                value: stats.activeCourses.toString(), 
+                icon: GraduationCap, 
+                color: 'from-indigo-500 to-purple-600',
+                subtitle: `of ${stats.totalCourses} total`
+              },
+              { 
+                label: 'Average Grade', 
+                value: stats.totalGrades > 0 ? `${stats.averageGrade}%` : 'N/A', 
+                icon: Trophy, 
+                color: 'from-yellow-500 to-orange-600',
+                subtitle: `from ${stats.totalGrades} grades`
+              }
+            ].map((stat, index) => (
+              <TiltCard
+                key={stat.label}
+                className="w-full h-full"
+              >
+                <motion.div
+                  variants={{ hidden: { opacity: 0, y: 50 }, show: { opacity: 1, y: 0 } }}
+                  className="bg-black/20 backdrop-blur-md p-6 rounded-3xl border border-white/10 transition-all duration-300 group relative overflow-hidden shadow-soft-light hover:border-white/20 h-full"
+                  style={{ transformStyle: 'preserve-3d' }}
+                >
+                  <div className="relative z-10" style={{ transform: 'translateZ(20px)' }}>
+                  <motion.div 
+                    className={`p-3 rounded-xl bg-gradient-to-br ${stat.color} shadow-lg mb-4`}
+                    transition={{ duration: 0.6, type: "spring" }}
+                  >
+                    <stat.icon className="w-6 h-6 text-white" />
+                  </motion.div>
+                  
+                  <motion.div 
+                    className="text-2xl font-bold text-white mb-1"
+                    initial={{ opacity: 0, scale: 0.5, transform: 'translateZ(0px)' }}
+                    animate={{ opacity: 1, scale: 1, transform: 'translateZ(40px)' }}
+                    transition={{ delay: 0.2 + index * 0.05, type: "spring" }}
+                  >
+                    {stat.value}
+                  </motion.div>
+                  
+                  <div className="text-white/70 text-sm font-medium">{stat.label}</div>
+                  {stat.subtitle && (
+                    <div className="text-white/50 text-xs mt-1">{stat.subtitle}</div>
+                  )}
+                  </div>
+                  <GlareEffect />
+                </motion.div>
+              </TiltCard>
+            ))}
+          </motion.div>
+
+          {/* Main Content Grid */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12"
+          >
+            {/* Tasks Panel */}
+            <motion.div className="lg:col-span-2 bg-black/20 backdrop-blur-xl p-8 rounded-3xl border border-white/10">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-white flex items-center gap-3">
+                  <CheckSquare className="w-7 h-7 text-emerald-400" />
+                  Your Tasks
+                  <span className="text-lg text-white/60">({filteredTasks.length})</span>
+                </h3>
+                
+                <div className="flex items-center space-x-2">
+                  {selectedTasks.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="flex items-center space-x-2"
+                    >
+                      <span className="text-sm text-white/60">
+                        {selectedTasks.length} selected
+                      </span>
+                      <button
+                        onClick={() => handleBulkAction('complete')}
+                        className="p-2 bg-black/20 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-colors border border-white/10 shadow-soft-light active:shadow-inner-soft"
+                        title="Mark as Complete"
+                      >
+                        <CheckSquare className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleBulkAction('export')}
+                        className="p-2 bg-black/20 text-blue-400 rounded-lg hover:bg-blue-500/20 transition-colors border border-white/10 shadow-soft-light active:shadow-inner-soft"
+                        title="Export Selected"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleBulkAction('delete')}
+                        className="p-2 bg-black/20 text-red-400 rounded-lg hover:bg-red-500/20 transition-colors border border-white/10 shadow-soft-light active:shadow-inner-soft"
+                        title="Delete Selected"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </motion.div>
+                  )}
+                  
+                  <button
+                    onClick={async () => {
+                      if (!currentUser) return;
+                      try {
+                        await secureDataHelpers.createQuickTask(currentUser.id);
+toast({
+  title: "Task Created ✅",
+  description: "New task added",
+  className: "bg-gray-900/50 backdrop-blur-md border border-emerald-500/60 shadow-lg rounded-xl p-4 text-emerald-300 font-semibold flex items-center space-x-3",
+  icon: <Plus className="w-5 h-5 text-emerald-400" />,
+});
+
+                      } catch (error) {
+                        toast({
+                          title: "Creation Failed",
+                          description: "Failed to create task",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                    className="p-3 bg-emerald-500/20 text-emerald-400 rounded-xl hover:bg-emerald-500/30 transition-all duration-300 shadow-soft-light active:shadow-inner-soft"
+                    title="Add Task"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Search and filter controls */}
+              <div className="flex flex-wrap items-center gap-4 mb-6">
+                <div className="relative flex-1 min-w-64">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" />
+                  <input
+                    type="text"
+                    placeholder="Search your tasks..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-black/20 border border-white/10 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400/50 transition-colors shadow-inner-soft"
+                  />
+                </div>
+                
+                <div className="relative">
+                  <select
+                    value={taskFilter}
+                    onChange={(e) => setTaskFilter(e.target.value as any)}
+                    className="pl-4 pr-10 py-3 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-emerald-400/50 transition-colors appearance-none shadow-soft-light active:shadow-inner-soft"
+                  >
+                    <option value="all">All Tasks</option>
+                    <option value="pending">Pending</option>
+                    <option value="completed">Completed</option>
+                    <option value="overdue">Overdue</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50 pointer-events-none" />
+                </div>
+                
+                <div className="relative">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className="pl-4 pr-10 py-3 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-emerald-400/50 transition-colors appearance-none shadow-soft-light active:shadow-inner-soft"
+                  >
+                    <option value="date">Sort by Date</option>
+                    <option value="priority">Sort by Priority</option>
+                    <option value="name">Sort by Name</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Task alerts */}
+              {(taskStats.overdueTasks > 0 || taskStats.highPriorityTasks > 0) && (
+                <div className="flex items-center gap-4 mb-6 p-4 bg-gradient-to-r from-red-500/10 to-orange-500/10 rounded-xl border border-red-400/20">
+                  <AlertCircle className="w-5 h-5 text-red-400" />
+                  <div className="text-sm text-white">
+                    {taskStats.overdueTasks > 0 && (
+                      <span className="text-red-400 font-medium">
+                        {taskStats.overdueTasks} overdue task{taskStats.overdueTasks > 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {taskStats.overdueTasks > 0 && taskStats.highPriorityTasks > 0 && ', '}
+                    {taskStats.highPriorityTasks > 0 && (
+                      <span className="text-orange-400 font-medium">
+                        {taskStats.highPriorityTasks} high priority task{taskStats.highPriorityTasks > 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Tasks List */}
+              <div className="space-y-5 max-h-[600px] overflow-y-auto pr-2">
+                <AnimatePresence>
+                  {filteredTasks.length > 0 ? (
+                    filteredTasks.slice(0, 10).map((task) => (
+                      <TaskItem
+                        key={task.id}
+                        task={task}
+                        isSelected={selectedTasks.includes(task.id)}
+                        onSelect={() => setSelectedTasks(prev => prev.includes(task.id) ? prev.filter(id => id !== task.id) : [...prev, task.id])}
+                        onStatusUpdate={handleTaskStatusUpdate}
+                        onDelete={handleDeleteTask}
+                        getPriorityClasses={getPriorityClasses}
+                        getStatusBorderColor={getStatusBorderColor}
+                        formatDate={formatDate}
+                      />
+                    ))
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-center py-16"
+                    >
+                      <CheckSquare className="w-16 h-16 mx-auto mb-6 text-white/20" />
+                      <p className="text-white/50 mb-4 text-lg">
+                        {searchTerm || taskFilter !== 'all' ? 'No tasks match your filters' : 'No Tasks Here Yet'}
+                      </p>
+                      {(!searchTerm && taskFilter === 'all') && (
+                        <motion.button 
+                          onClick={async () => {
+                            if (!currentUser) return;
+                            try {
+                              await secureDataHelpers.createQuickTask(currentUser.id);
+                              toast({
+                                title: "Task Created ✅",
+                                description: "First task added",
+                                className: "bg-gray-900/50 backdrop-blur-md border border-emerald-500/60 shadow-lg rounded-xl p-4 text-emerald-300 font-semibold flex items-center space-x-3",
+                                icon: <Plus className="w-5 h-5 text-emerald-400" />,
+                              });
+
+                            } catch (error) {
+                              toast({
+                                title: "Creation Failed",
+                                description: "Failed to create task",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors px-6 py-2 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          Create Your First Quick Task
+                        </motion.button>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {filteredTasks.length > 10 && (
+                <motion.button 
+                  onClick={() => onNavigate('tasks')}
+                  className="w-full mt-6 text-center text-emerald-400 font-semibold py-4 hover:bg-emerald-500/10 rounded-2xl transition-all duration-300 border border-dashed border-emerald-400/30 hover:border-emerald-400/50"
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Eye className="w-5 h-5" />
+                    View All {filteredTasks.length} Secure Tasks
+                  </div>
+                </motion.button>
+              )}
+            </motion.div>
+
+            {/* Analytics Panel */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="bg-black/20 backdrop-blur-xl p-8 rounded-3xl border border-white/10"
+            >
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-2xl font-bold text-white flex items-center gap-3">
+                  <BarChart3 className="w-7 h-7 text-purple-400" />
+                  Your Analytics
+                  <div className="px-2 py-1 bg-purple-500/20 rounded-full text-xs text-purple-400 font-bold">
+                    LIVE
+                  </div>
+                </h3>
+              </div>
+
+              <div className="space-y-6">
+                {/* Key Analytics Cards */}
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="bg-black/20 rounded-xl p-4 border border-white/10 shadow-inner-soft">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-white font-semibold mb-1">Incomplete Tasks</h4>
+                        <p className="text-2xl font-bold text-red-400">{analytics.incompleteTasksCount}</p>
+                      </div>
+                      <AlertCircle className="w-8 h-8 text-red-400" />
+                    </div>
+                  </div>
+
+                  <div className="bg-black/20 rounded-xl p-4 border border-white/10 shadow-inner-soft">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-white font-semibold mb-1">Top Grade</h4>
+                        <p className="text-2xl font-bold text-emerald-400">
+                          {analytics.topGrades.length > 0 ? `${analytics.topGrades[0].percentage}%` : 'N/A'}
+                        </p>
+                      </div>
+                      <Trophy className="w-8 h-8 text-emerald-400" />
+                    </div>
+                  </div>
+
+                  <div className="bg-black/20 rounded-xl p-4 border border-white/10 shadow-inner-soft">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-white font-semibold mb-1">Total Classes</h4>
+                        <p className="text-2xl font-bold text-blue-400">{analytics.totalClasses}</p>
+                      </div>
+                      <CalendarIcon className="w-8 h-8 text-blue-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Study Time Chart */}
+                <div>
+                  <h4 className="text-white font-semibold mb-4 flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-blue-400" />
+                    Study Sessions (Last 7 Days)
+                  </h4>
+                  <div className="space-y-2">
+                    {analytics.dailyStudyTime.slice(-7).map((day, index) => {
+                      const maxMinutes = Math.max(...analytics.dailyStudyTime.slice(-7).map(d => d.minutes), 1);
+                      const percentage = (day.minutes / maxMinutes) * 100;
+                      
+                      return (
+                        <div key={day.date} className="flex items-center gap-3">
+                          <div className="text-xs text-white/60 w-12 font-medium">
+                            {new Date(day.date).toLocaleDateString('en', { weekday: 'short' })}
+                          </div>
+                          <div className="flex-1 bg-black/30 rounded-full h-3 relative overflow-hidden shadow-inner-soft">
+                            <motion.div
+                              className="h-full bg-gradient-to-r from-emerald-500 to-green-500 rounded-full"
+                              initial={{ width: 0 }}
+                              animate={{ width: `${percentage}%` }}
+                              transition={{ delay: index * 0.1, duration: 0.8 }}
+                            />
+                          </div>
+                          <div className="text-xs text-white/70 w-16 text-right">
+                            {formatTime(day.minutes)}
+                            <div className="text-white/50 text-xs">
+                              {day.sessions} sessions
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Top Grades List */}
+                {analytics.topGrades.length > 0 && (
+                  <div>
+                    <h4 className="text-white font-semibold mb-4 flex items-center gap-2">
+                      <Award className="w-4 h-4 text-yellow-400" />
+                      Top Grades
+                    </h4>
+                    <div className="space-y-3">
+                      {analytics.topGrades.map((grade, index) => (
+                        <motion.div
+                          key={index}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className="flex items-center justify-between p-3 bg-black/20 border border-white/10 rounded-xl shadow-inner-soft"
+                        >
+                          <div>
+                            <div className="text-sm text-white/80 font-medium">{grade.subject}</div>
+                            <div className="text-xs text-white/50">{grade.assignment_name}</div>
+                          </div>
+                          <div className="text-lg font-bold text-yellow-400">
+                            {grade.percentage}%
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+
+          {/* Quick Actions Grid */}
+          <motion.div
+            variants={{
+              hidden: { opacity: 0 },
+              show: {
+                opacity: 1,
+                transition: { staggerChildren: 0.1 }
+              }
+            }}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-2 lg:grid-cols-4 gap-8 mb-12"
+          >
+            {[
+              { 
+                page: 'timetable', 
+                icon: CalendarIcon, 
+                title: 'Schedule', 
+                desc: `${stats.upcomingClasses} upcoming classes`, 
+                color: 'from-indigo-500 to-purple-600',
+                count: stats.totalClassesCount
+              },
+              { 
+                page: 'notes', 
+                icon: BookOpen, 
+                title: 'Notes', 
+                desc: `${stats.totalNotes} notes`, 
+                color: 'from-emerald-500 to-teal-600',
+                count: stats.totalNotes
+              },
+              { 
+                page: 'courses', 
+                icon: GraduationCap, 
+                title: 'Courses', 
+                desc: `${stats.activeCourses} active courses`, 
+                color: 'from-blue-500 to-cyan-600',
+                count: stats.activeCourses
+              },
+              { 
+                page: 'calculator',
+                icon: CalculatorIcon, 
+                title: 'Calculator', 
+                desc: 'Scientific Calculator', 
+                color: 'from-orange-500 to-red-600',
+                count: null
+              }
+            ].map((item, index) => (
+              <TiltCard
+                key={item.page}
+                className="w-full h-full"
+              >
+                <motion.button
+                  variants={{ hidden: { opacity: 0, y: 50 }, show: { opacity: 1, y: 0 } }}
+                  onClick={() => onNavigate(item.page)}
+                  className="w-full h-full bg-black/20 backdrop-blur-md p-8 rounded-3xl text-left transition-all duration-300 border border-white/10 group relative overflow-hidden shadow-soft-light hover:border-emerald-400/50"
+                  style={{ transformStyle: 'preserve-3d' }}
+                  whileTap={{ scale: 0.98, transform: 'translateZ(-20px)' }}
+                >
+                  <div className="relative z-10" style={{ transform: 'translateZ(20px)' }}>
+                  <div className="flex items-center justify-between mb-6">
+                    <motion.div 
+                      className="inline-flex p-5 rounded-2xl bg-emerald-500/10 shadow-xl"
+                      transition={{ duration: 0.8, type: "spring" }}
+                    >
+                      <item.icon className="w-8 h-8 text-white" />
+                    </motion.div>
+                    
+                    {item.count !== null && (
+                      <motion.div
+                        className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 text-sm text-white font-bold border border-white/30"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ delay: 0.5 + index * 0.1, type: "spring" }}
+                        whileHover={{ scale: 1.1 }}
+                      >
+                        {item.count}
+                      </motion.div>
+                    )}
+                  </div>
+                  
+                  <h3 className="font-bold text-white mb-3 text-xl group-hover:text-emerald-300 transition-colors">
+                    {item.title}
+                  </h3>
+                  <p className="text-white/70 group-hover:text-white/90 transition-colors">
+                    {item.desc}
+                  </p>
+                  </div>
+
+                  <GlareEffect />
+                </motion.button>
+              </TiltCard>
+            ))}
+          </motion.div>
+
+          {/* Data Summary */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-black/20 backdrop-blur-xl p-8 rounded-3xl border border-emerald-400/20 bg-gradient-to-r from-emerald-900/10 to-blue-900/10 mb-12 shadow-lg"
+          >
+            <div className="flex items-center gap-4 mb-6">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+              >
+                <Shield className="w-8 h-8 text-emerald-400" />
+              </motion.div>
+              <div>
+                <h3 className="text-2xl font-bold text-emerald-300">Real-time Dashboard</h3>
+                <p className="text-emerald-400/80">All data is authenticated, encrypted, and isolated to your user account</p>
+              </div>
+              <div className="ml-auto flex items-center gap-2 px-4 py-2 bg-emerald-500/20 rounded-full border border-emerald-400/30">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                <span className="text-emerald-400 font-bold text-sm">LIVE DATABASE</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-emerald-200/90">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-emerald-300">{stats.totalTasks}</div>
+                <div className="text-sm">Tasks</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-emerald-300">{stats.totalStudySessions}</div>
+                <div className="text-sm">Study Sessions</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-emerald-300">{stats.totalGrades}</div>
+                <div className="text-sm">Grades Tracked</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-emerald-300">{stats.totalNotes}</div>
+                <div className="text-sm">Notes</div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Footer */}
+          <footer className="mt-12 py-6 border-t border-white/10 text-sm flex items-center justify-between text-white/70 bg-black/10 backdrop-blur-sm rounded-t-2xl px-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-white/10 backdrop-blur-sm p-1 rounded-lg flex items-center justify-center">
+                <img
+                  src={logo}
+                  alt="VSAV GyanVedu Logo"
+                  className="h-8 object-contain"
+                  draggable={false}
+                />
+              </div>
+              <div>
+                <div className="font-semibold text-emerald-400">VSAV GYANTAPAS</div>
+                <div className="text-xs">Dashboard V2.1</div>
+              </div>
+            </div>
+            
+            <div className="text-right">
+              <button onClick={() => setCommandPaletteOpen(true)} className="text-sm text-white/50 hover:text-white transition-colors mb-1 flex items-center gap-2 justify-end">
+                <Command size={14} />
+                <span>Command Menu</span>
+                <span className="ml-2 text-xs border border-white/20 rounded px-1.5 py-0.5">Ctrl+K</span>
+              </button>
+              <div className="text-xs flex items-center gap-2">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                Secure Database • User Isolated • Live Sync • Real-Data
+              </div>
+              <div className="text-xs mt-1">© 2025 VSAV GYANTAPAS - All Rights Reserved</div>
+            </div>
+          </footer>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const CommandPalette = ({ isOpen, onClose, onNavigate, onAction }: { isOpen: boolean, onClose: () => void, onNavigate: (page: string) => void, onAction: (action: string) => Promise<void> | void }) => {
+  const [search, setSearch] = useState('');
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const commands = useMemo(() => [
+    { name: 'Go to Dashboard', action: () => onNavigate('dashboard'), icon: <BarChart3 size={18} /> },
+    { name: 'Go to Tasks', action: () => onNavigate('tasks'), icon: <CheckSquare size={18} /> },
+    { name: 'Go to Notes', action: () => onNavigate('notes'), icon: <BookOpen size={18} /> },
+    { name: 'Go to Schedule', action: () => onNavigate('timetable'), icon: <CalendarIcon size={18} /> },
+    { name: 'Go to Courses', action: () => onNavigate('courses'), icon: <GraduationCap size={18} /> },
+    { name: 'Add New Task', action: () => onAction('createTask'), icon: <Plus size={18} /> },
+    { name: 'Logout', action: () => onAction('logout'), icon: <LogOut size={18} /> },
+  ], [onNavigate, onAction]);
+
+  const filteredCommands = useMemo(() =>
+    commands.filter(cmd => cmd.name.toLowerCase().includes(search.toLowerCase())),
+    [search, commands]
+  );
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSearch('');
+      setSelectedIndex(0);
+    }
+  }, [isOpen]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      setSelectedIndex((prev) => (prev + 1) % filteredCommands.length);
+    } else if (e.key === 'ArrowUp') {
+      setSelectedIndex((prev) => (prev - 1 + filteredCommands.length) % filteredCommands.length);
+    } else if (e.key === 'Enter') {
+      filteredCommands[selectedIndex]?.action();
+      onClose();
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center z-50 pt-24" onClick={onClose}>
+          <motion.div initial={{ scale: 0.95, y: -20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: -20 }} transition={{ type: 'spring', stiffness: 400, damping: 30 }} className="bg-black/50 border border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 border-b border-white/10 flex items-center gap-4">
+              <Search className="text-white/50" />
+              <input type="text" placeholder="Type a command or search..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={handleKeyDown} className="w-full bg-transparent text-white placeholder:text-white/50 focus:outline-none text-lg" autoFocus />
+            </div>
+            <div className="p-2 max-h-96 overflow-y-auto">
+              {filteredCommands.map((cmd, index) => (
+                <div key={cmd.name} onClick={() => { cmd.action(); onClose(); }} className={`flex items-center gap-4 p-3 rounded-lg cursor-pointer transition-colors ${selectedIndex === index ? 'bg-white/10' : 'hover:bg-white/5'}`}>
+                  <div className="text-white/70">{cmd.icon}</div>
+                  <span className="text-white/90">{cmd.name}</span>
+                </div>
+              ))}
+              {filteredCommands.length === 0 && <div className="p-8 text-center text-white/50">No results found.</div>}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+export default Dashboard;
+export { Dashboard };

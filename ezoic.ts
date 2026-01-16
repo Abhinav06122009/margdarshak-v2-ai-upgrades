@@ -1,0 +1,47 @@
+/**
+ * Ezoic Ad Management Utilities
+ *
+ * This file provides helper functions to interact with the Ezoic ezstandalone API
+ * for managing ad placements in a single-page application (SPA).
+ */
+
+// Define the ezstandalone object on the window for TypeScript
+declare global {
+  interface Window {
+    ezstandalone?: {
+      cmd: (() => void)[];
+      showAds: (...args: (number | undefined)[]) => void;
+      destroyPlaceholders: (...args: number[]) => void;
+      destroyAll: () => void;
+    };
+  }
+}
+
+/**
+ * Shows ads in specified placeholders or refreshes all ads on the page.
+ * @param placeholderIds - A list of placeholder IDs to show ads in. If empty, refreshes all existing ads.
+ */
+export const showAds = (...placeholderIds: number[]): void => {
+  window.ezstandalone?.cmd.push(() => {
+    window.ezstandalone?.showAds(...placeholderIds);
+  });
+};
+
+/**
+ * Destroys specific ad placeholders so they can be reused.
+ * @param placeholderIds - A list of placeholder IDs to destroy.
+ */
+export const destroyPlaceholders = (...placeholderIds: number[]): void => {
+  window.ezstandalone?.cmd.push(() => {
+    window.ezstandalone?.destroyPlaceholders(...placeholderIds);
+  });
+};
+
+/**
+ * Destroys all ad placeholders on the page.
+ */
+export const destroyAllPlaceholders = (): void => {
+  window.ezstandalone?.cmd.push(() => {
+    window.ezstandalone?.destroyAll();
+  });
+};

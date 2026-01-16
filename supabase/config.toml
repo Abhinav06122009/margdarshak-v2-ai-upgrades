@@ -1,0 +1,26 @@
+# supabase/config.toml
+
+# This is a placeholder, you should replace it with your project's reference ID
+# from your Supabase project's dashboard URL.
+# e.g., https://app.supabase.com/project/your-project-ref-id
+# You can also link your project using the CLI: `supabase link --project-ref <orkoqwrdfygfkqqerqvh>`
+project_id = "orkoqwrdfygfkqqerqvh"
+
+[api]
+port = 54321
+schemas = ["public", "storage"]
+extra_search_path = ["public"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+port = 54323
+
+# This section is crucial for Edge Functions.
+[functions]
+
+[functions.summarize-note]
+  verify_jwt = true

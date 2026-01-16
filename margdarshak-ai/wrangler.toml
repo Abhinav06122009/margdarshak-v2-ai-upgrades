@@ -1,0 +1,11 @@
+name = "margdarshak-ai"
+main = "src/index.ts"
+compatibility_date = "2025-12-22"
+
+# 🧬 THE AI BINDING
+# This is mandatory to avoid empty/null responses
+[ai]
+binding = "AI"
+
+[observability]
+enabled = true
