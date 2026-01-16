@@ -17,7 +17,6 @@ const Calendar = ({ onBack }: CalendarProps) => {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDayIndex = new Date(year, month, 1).getDay();
 
-  // Create the grid: empty slots for offset + actual days
   const calendarDays = [
     ...Array(firstDayIndex).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => new Date(year, month, i + 1))

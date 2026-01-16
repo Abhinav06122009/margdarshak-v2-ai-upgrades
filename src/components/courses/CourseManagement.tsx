@@ -1,5 +1,3 @@
-// src/components/course/CourseManagement.tsx
-
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -11,14 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label'; // eslint-disable-line @typescript-eslint/no-unused-vars
+import { Label } from '@/components/ui/label'; 
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles } from 'lucide-react'; // or any icon you like
+import { Sparkles } from 'lucide-react'; 
 import { Link } from 'react-router-dom';
 import { courseService } from '@/components/dashboard/courseService';
-import type { Course, CourseFormData, SecureUser, CourseStats } from '@/components/dashboard/course'; // Assuming types are here
+import type { Course, CourseFormData, SecureUser, CourseStats } from '@/components/dashboard/course'; 
 import { recommendationService, RecommendedCourse, LearningPath, CuratedContent } from './recommendationService';
 import CourseCard from './CourseCard';
 import CourseFocusView from './CourseFocusView';
@@ -26,7 +24,6 @@ import ParallaxBackground from '@/components/ui/ParallaxBackground';
 import ConfirmationModal from '@/components/ui/ConfirmationModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
-// Social Icons
 const linkedinLogo = () => (
   <svg viewBox="0 0 16 16" className="w-5 h-5 fill-current">
     <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
@@ -128,7 +125,7 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ onBack }) => {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [showColorLegend, setShowColorLegend] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
-  const [searchTerm, setSearchTerm] = useState(''); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [searchTerm, setSearchTerm] = useState(''); 
   const [filterGrade, setFilterGrade] = useState('all');
   const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [currentUser, setCurrentUser] = useState<SecureUser | null>(null);
@@ -139,7 +136,6 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ onBack }) => {
     message: '',
     onConfirm: () => {},
   });
-  // AI Feature State
   const [recommendations, setRecommendations] = useState<RecommendedCourse[]>([]);
   const [learningPath, setLearningPath] = useState<LearningPath | null>(null);
   const [isPathModalOpen, setIsPathModalOpen] = useState(false);
@@ -213,8 +209,7 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ onBack }) => {
        Welcome Back <span className="text-emerald-400 font-semibold">{user.profile?.full_name}</span>! Your Courses Is Updated.
      </span>
    ),
-   className: "bg-black border border-emerald-500/50 shadow-xl", // Success: Green
-   // Optionally you can set a custom icon:
+   className: "bg-black border border-emerald-500/50 shadow-xl", 
    icon: <Shield className="text-emerald-400" />
  });
 
@@ -280,16 +275,13 @@ toast({
       <span className="font-semibold">{formData.name}</span> has been updated.
     </span>
   ),
-  className: "bg-black border border-emerald-500/50 shadow-xl", // Success: Green
+  className: "bg-black border border-emerald-500/50 shadow-xl", 
   icon: <Shield className="text-emerald-400" />,
-  duration: 2000,         // Optional: toast stays 5 seconds
-  isClosable: true,       // Optional: close button
-  position: "top-right",  // Optional: position on screen
+  duration: 2000,         
+  isClosable: true,       
+  position: "top-right",  
 });
 
-
-
-// ...inside your async handler:
 } else {
   await courseService.createCourse(enhancedData, currentUser.id);
   toast({
@@ -303,7 +295,7 @@ toast({
         <span className="text-emerald-400 font-semibold">{formData.name}</span> Has Been Added<span className="text-yellow-400"></span>
       </span>
     ),
-    className: "bg-black border border-emerald-500/50 shadow-2xl", // Success: Green
+    className: "bg-black border border-emerald-500/50 shadow-2xl", 
     icon: <Sparkles className="text-yellow-400" />,
     duration: 5000,
     isClosable: true,
@@ -317,13 +309,11 @@ toast({
       
       const userCourses = await courseService.fetchUserCourses(currentUser.id);
       setCourses(userCourses);
-      // Manually trigger a search to update the filtered list with the new data
       await performSearch();
       
       const stats = await courseService.getCourseStatistics(currentUser.id);
       setCourseStats(stats);
-      
-      // Re-generate recommendations with the latest course list
+
       const newRecommendations = await recommendationService.getPersonalizedRecommendations(currentUser.id, userCourses);
       setRecommendations(newRecommendations);
     } catch (error: any) {
@@ -350,7 +340,6 @@ toast({
       priority: course.priority || 'medium',
       difficulty: course.difficulty || 'intermediate',
     });
-    // Fetch curated content when editing
     recommendationService.getCuratedContent(course).then(content => {
       setCuratedContent(content);
     });
@@ -377,7 +366,7 @@ toast({
                 <span className="text-rose-400 font-semibold">{courseName}</span> has been removed.
               </span>
             ),
-            className: "bg-black border border-red-500/50 shadow-2xl", // Error: Red
+            className: "bg-black border border-red-500/50 shadow-2xl", 
             icon: <Trash2 className="text-rose-400" />,
           });
           const userCourses = await courseService.fetchUserCourses(currentUser.id);
@@ -425,7 +414,7 @@ toast({
         </span>
       ),
       description: "Your personalized learning path is ready to view.",
-      className: "bg-black border border-blue-500/50 shadow-xl", // Info: Blue
+      className: "bg-black border border-blue-500/50 shadow-xl", 
       icon: <Route className="text-blue-400" />,
     });
     setIsPathModalOpen(true);
@@ -765,13 +754,13 @@ toast({
                     <Input
                       placeholder="Search courses..."
                       value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)} // eslint-disable-line @typescript-eslint/no-unused-vars
+                      onChange={(e) => setSearchTerm(e.target.value)} 
                       className="pl-10 bg-black/30 border-2 border-white/15 rounded-xl text-white placeholder:text-white/60 focus:bg-black/40 focus:border-blue-500/70 shadow-neumorphic-inset-lg transition-all duration-300"
                     />
                   </div>
                   <Input
                     placeholder="Grade Level..."
-                    value={filterGrade} // eslint-disable-line @typescript-eslint/no-unused-vars
+                    value={filterGrade} 
                     onChange={(e) => setFilterGrade(e.target.value)}
                     className="bg-black/30 border-2 border-white/15 rounded-xl text-white placeholder:text-white/60 focus:bg-black/40 focus:border-blue-500/70 shadow-neumorphic-inset-lg transition-all duration-300"
                   />

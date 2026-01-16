@@ -43,7 +43,6 @@ interface UserData {
   country_code?: string;
 }
 
-// Enhanced Countries data with complete list
 const countries = [
   {"code": "IN", "name": "India", "dialCode": "+91", "flag": "🇮🇳"},
   {"code": "US", "name": "United States", "dialCode": "+1", "flag": "🇺🇸"},
@@ -217,10 +216,8 @@ const countries = [
   {"code": "ZW", "name": "Zimbabwe", "dialCode": "+263", "flag": "🇿🇼"}
 ];
 
-// --- ADVANCED SECURITY MODULE ---
 
 const advancedSecurity = {
-  // Get WebGL fingerprint
   getWebGLFingerprint: () => {
     try {
       const canvas = document.createElement('canvas');
@@ -237,7 +234,6 @@ const advancedSecurity = {
     }
   },
 
-  // Get AudioContext fingerprint
   getAudioFingerprint: async () => {
     try {
       const audioContext = window.OfflineAudioContext || (window as any).webkitOfflineAudioContext;
@@ -247,7 +243,6 @@ const advancedSecurity = {
       oscillator.type = 'triangle';
       oscillator.frequency.setValueAtTime(10000, context.currentTime);
       const compressor = context.createDynamicsCompressor();
-      // Configure compressor
       const properties: [keyof DynamicsCompressorNode, number][] = [['threshold', -50], ['knee', 40], ['ratio', 12], ['reduction', -20], ['attack', 0], ['release', 0.25]];
       properties.forEach(
         (item) => {
@@ -268,7 +263,6 @@ const advancedSecurity = {
     }
   },
 
-  // Enhance the base fingerprint with advanced metrics
   enhanceDeviceFingerprint: async (baseFingerprint: BaseDeviceFingerprint) => {
     const [webgl, audio] = await Promise.all([
       advancedSecurity.getWebGLFingerprint(),
@@ -277,7 +271,6 @@ const advancedSecurity = {
     return { ...baseFingerprint, webgl, audio, plugins: navigator.plugins.length };
   },
 
-  // AI-powered device trust score simulation
   calculateDeviceTrustScore: (fingerprint: DeviceFingerprint) => {
     let score = 100;
     const heuristics = {
@@ -285,8 +278,8 @@ const advancedSecurity = {
       'webgl_error': -10,
       'no_audio_context': -15,
       'audio_context_error': -10,
-      'Tor': -40, // Check user agent for Tor browser
-      'Headless': -50, // Check user agent for headless chrome
+      'Tor': -40,
+      'Headless': -50,
     };
 
     if (fingerprint.userAgent.includes('Tor')) score += heuristics['Tor'];
@@ -295,12 +288,11 @@ const advancedSecurity = {
     if (fingerprint.webgl === 'webgl_error') score += heuristics['webgl_error'];
     if (fingerprint.audio === 'no_audio_context') score += heuristics['no_audio_context'];
     if (fingerprint.audio === 'audio_context_error') score += heuristics['audio_context_error'];
-    if (navigator.webdriver) score -= 50; // Indicates automation
+    if (navigator.webdriver) score -= 50;
 
     return Math.max(0, score);
   },
 
-  // Anomaly detection simulation
   checkForAnomalies: (currentFingerprint: DeviceFingerprint, previousFingerprint: DeviceFingerprint) => {
     if (!previousFingerprint) return [];
     const anomalies = [];
@@ -316,7 +308,6 @@ const advancedSecurity = {
     return anomalies;
   },
   
-  // Continuous authentication via behavioral analysis (hook)
   useBehavioralAnalysis: () => {
     const [isBehaviorNormal, setIsBehaviorNormal] = useState(true);    
     const [typingSpeed, setTypingSpeed] = useState(0);
@@ -345,13 +336,13 @@ const advancedSecurity = {
       window.addEventListener('scroll', handleActivity);
 
       const interval = setInterval(() => {
-        if (Date.now() - lastActivity.current > 60000) { // 1 minute of inactivity
+        if (Date.now() - lastActivity.current > 60000) { 
           if (isBehaviorNormal) {
             setIsBehaviorNormal(false);
             securityFeatures.logSecurityEvent('behavioral_anomaly_detected', { type: 'inactivity' });
           }
         }
-      }, 10000); // Check every 10 seconds
+      }, 10000); 
 
       return () => {
         window.removeEventListener('mousemove', handleActivity);
@@ -365,12 +356,8 @@ const advancedSecurity = {
   }
 };
 
-// --- END OF ADVANCED SECURITY MODULE ---
-
-
-// Enhanced Security Functions
 const securityFeatures = {
-  // Generate device fingerprint
+
   generateDeviceFingerprint: async () => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -388,7 +375,6 @@ const securityFeatures = {
       userAgent: navigator.userAgent.substring(0, 100),
       canvas: canvas.toDataURL().substring(0, 50),
       timestamp: new Date().toISOString(),
-      // New enhanced metrics
       colorDepth: screen.colorDepth,
       deviceMemory: (navigator as Navigator & { deviceMemory?: number }).deviceMemory || 'unknown',
       hardwareConcurrency: navigator.hardwareConcurrency || 'unknown',
@@ -398,21 +384,20 @@ const securityFeatures = {
     return advancedSecurity.enhanceDeviceFingerprint(baseFingerprint);
   },
 
-  // Rate limiting simulation
   checkRateLimit: (email: string) => {
     const attempts = localStorage.getItem(`auth_attempts_${email}`);
     const lastAttempt = localStorage.getItem(`last_attempt_${email}`);
     
     if (attempts && parseInt(attempts) >= 5) {
       const timeDiff = Date.now() - parseInt(lastAttempt || '0');
-      const lockTime = 0 * 60 * 1000; // 15 minutes
+      const lockTime = 0 * 60 * 1000;
       if (timeDiff < lockTime) {
         const remaining = lockTime - timeDiff;
         const minutes = Math.floor(remaining / 60000);
         const seconds = Math.ceil((remaining % 60000) / 1000);
         const remainingTime = minutes > 0 ? `${minutes} minute(s) and ${seconds} second(s)` : `${seconds} second(s)`;
         return { allowed: false, remainingTime };
-      } else { // If lock time has passed, reset attempts
+      } else { 
         localStorage.removeItem(`auth_attempts_${email}`);
         localStorage.removeItem(`last_attempt_${email}`);
       }
@@ -421,7 +406,6 @@ const securityFeatures = {
     return { allowed: true };
   },
 
-  // Log security event by invoking a secure Edge Function
   logSecurityEvent: async (event: string, data: unknown) => {
     try {
       let fingerprint;
@@ -429,12 +413,9 @@ const securityFeatures = {
         fingerprint = await securityFeatures.generateDeviceFingerprint();
       } catch (fpError) {
         console.error("Advanced fingerprinting failed, falling back to basic.", fpError);
-        // Fallback to a more basic fingerprint if advanced one fails
         fingerprint = { userAgent: navigator.userAgent, timestamp: new Date().toISOString() };
       }
 
-      // Use supabase.functions.invoke to securely call the Edge Function.
-      // This is the recommended approach as it handles authentication automatically.
       const { error } = await supabase.functions.invoke('log-security-event', {
         body: {
           event,
@@ -451,7 +432,6 @@ const securityFeatures = {
     }
   },
 
-  // Enhanced password strength
   checkPasswordStrength: (password: string) => {
     const checks = {
       length: password.length >= 8,
@@ -467,9 +447,7 @@ const securityFeatures = {
   }
 };
 
-// Enhanced secure auth functions with additional security
 import { User } from '@supabase/supabase-js';
-// ...
 const createSecureUserProfile = async (user: User, userData?: UserData) => {
   try {
     const { data: existingProfile, error: checkError } = await supabase
@@ -480,7 +458,7 @@ const createSecureUserProfile = async (user: User, userData?: UserData) => {
     
     const fingerprint = await securityFeatures.generateDeviceFingerprint();
 
-    if (checkError && checkError.code === 'PGRST116') { // Profile doesn't exist
+    if (checkError && checkError.code === 'PGRST116') { 
       const { error: createError } = await supabase
         .from('profiles')
         .insert({
@@ -504,13 +482,12 @@ const createSecureUserProfile = async (user: User, userData?: UserData) => {
         email: user.email,
         userType: userData?.user_type
       });
-    } else if (existingProfile) { // Profile exists, check for anomalies and update fingerprint
+    } else if (existingProfile) { 
       const anomalies = advancedSecurity.checkForAnomalies(fingerprint, existingProfile.security_settings?.device_fingerprints?.[0]);
       if (anomalies.length > 0) {
         securityFeatures.logSecurityEvent('login_anomaly_detected', { userId: user.id, anomalies });
       }
       
-      // Add new fingerprint and keep the last 5
       const updatedFingerprints = [fingerprint, ...(existingProfile.security_settings?.device_fingerprints || [])].slice(0, 5);
       
       const { error: updateError } = await supabase
@@ -694,7 +671,6 @@ const secureAuth: { [key: string]: (...args: any[]) => Promise<any> } = {
   }
 };
 
-// Add signInWithBiometrics to the secureAuth object
 secureAuth.signInWithBiometrics = async () => {
   if (!navigator.credentials || !navigator.credentials.get) {
     throw new Error('Biometric authentication is not supported on this browser.');
@@ -703,8 +679,6 @@ secureAuth.signInWithBiometrics = async () => {
   try {
     securityFeatures.logSecurityEvent('biometric_signin_attempt', {});
 
-    // In a real-world scenario, you would first fetch a challenge 
-    // from your backend. For this implementation, we'll simulate it.
     const challenge = new Uint8Array(32);
     window.crypto.getRandomValues(challenge);
 
@@ -712,8 +686,6 @@ secureAuth.signInWithBiometrics = async () => {
       publicKey: {
         challenge,
         timeout: 60000,
-        // In a real app, you'd specify allowed credential IDs for the user
-        // allowCredentials: [], 
         userVerification: 'preferred',
       },
     });
@@ -722,9 +694,6 @@ secureAuth.signInWithBiometrics = async () => {
       throw new Error('Biometric authentication failed or was canceled.');
     }
 
-    // Here, you would send the `credential` object to your backend for verification.
-    // If verification is successful, the backend returns a session.
-    // We will simulate a successful login for now.
     securityFeatures.logSecurityEvent('biometric_signin_success', { credentialId: credential.id });
   } catch (error: unknown) {
     if (error instanceof Error) {
@@ -734,7 +703,6 @@ secureAuth.signInWithBiometrics = async () => {
   }
 };
 
-// --- UI COMPONENTS ---
 
 const GoogleLogo = () => ( <svg viewBox="0 0 24 24" className="w-5 h-5"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg> );
 const GitHubLogo = () => ( <svg viewBox="0 0 16 16" className="w-5 h-5 fill-current"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg> );
@@ -783,8 +751,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
   const [honeypot, setHoneypot] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
-
-  // New state for multi-step auth
   const [authStep, setAuthStep] = useState<'credentials' | 'mfa' | 'success'>('credentials');
   const [mfaPhoneNumber, setMfaPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
@@ -843,7 +809,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
         setSecurityVerified(true);
         securityFeatures.logSecurityEvent('auth_page_loaded', { trustScore: score });
       } catch {
-        setSecurityVerified(true); // Still allow login if DB isn't fully set up
+        setSecurityVerified(true);
       }
     };
     verifySecuritySetup();
@@ -909,7 +875,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
     }
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) {
-      // Focus on the first field with an error
       toast({ title: "Validation Error", description: Object.values(newErrors)[0], variant: "destructive" });
       return false;
     }
@@ -954,8 +919,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
           toast({ title: "🚀 Account Created!", description: "Please check your email for verification." });          
         }
       }
-
-      // MFA Step for login
       if (isLogin && authResult.data.user) {
         const { mfaRequired, fullPhoneNumber, profileExists } = await handleMfaSignIn(authResult.data.user);
         const forceMfa = deviceTrustScore < 50;
@@ -973,10 +936,9 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
           setAuthStep('mfa');
         } else { onLogin(); }
       } else if (authResult.data.user && !isLogin) {
-        // Signup success without phone, wait for email verification
         setTimeout(() => {
-          setSignupSuccess(false); // Reset success screen
-          setIsLogin(true); // Flip to login view
+          setSignupSuccess(false);
+          setIsLogin(true);
         }, 5000);
       } else if (authResult.data.user) {
         onLogin();

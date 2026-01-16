@@ -6,7 +6,6 @@ export const SystemMonitor = () => {
   const [status, setStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
   const [lastPing, setLastPing] = useState<number | null>(null);
 
-  // Real human engineering: Check the actual database connection
   useEffect(() => {
     const checkConnection = async () => {
       const start = performance.now();
@@ -18,7 +17,6 @@ export const SystemMonitor = () => {
     };
 
     checkConnection();
-    // Poll every 30s (sensible resource usage)
     const interval = setInterval(checkConnection, 30000); 
     return () => clearInterval(interval);
   }, []);

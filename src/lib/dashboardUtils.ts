@@ -1,10 +1,10 @@
 // src/lib/dashboardUtils.ts
 
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner"; // Assuming you use sonner or similar for toasts
+import { toast } from "sonner"; 
 
 /**
- * Updates a task's status in Supabase
+ * Updates a task's status
  */
 export const handleTaskStatusUpdate = async (taskId: string, newStatus: 'pending' | 'completed' | 'in_progress') => {
   try {
@@ -22,7 +22,7 @@ export const handleTaskStatusUpdate = async (taskId: string, newStatus: 'pending
 };
 
 /**
- * Creates a quick task from the dashboard
+ * Creates a quick task
  */
 export const handleCreateQuickTask = async (userId: string, title: string, priority: 'high' | 'medium' | 'low') => {
   try {
@@ -47,7 +47,44 @@ export const handleCreateQuickTask = async (userId: string, title: string, prior
 };
 
 /**
- * ✅ FIX: Added missing Export Function
+ * ✅ NEW: Deletes a single task (Soft Delete)
+ */
+export const handleDeleteTask = async (taskId: string) => {
+  try {
+    const { error } = await supabase
+      .from('tasks')
+      .update({ is_deleted: true }) 
+      .eq('id', taskId);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error("Error deleting task:", error);
+    return false;
+  }
+};
+
+/**
+ * ✅ NEW: Bulk Deletes tasks
+ */
+export const handleBulkDeleteTasks = async (taskIds: string[]) => {
+  try {
+    const { error } = await supabase
+      .from('tasks')
+      .update({ is_deleted: true })
+      .in('id', taskIds);
+
+    if (error) throw error;
+    toast.success(`${taskIds.length} tasks deleted`);
+    return true;
+  } catch (error) {
+    console.error("Error bulk deleting tasks:", error);
+    toast.error("Failed to delete tasks");
+    return false;
+  }
+};
+
+/**
  * Exports dashboard data to JSON
  */
 export const handleExportData = (tasks: any[], stats: any, analytics: any) => {
@@ -80,16 +117,4 @@ export const handleExportData = (tasks: any[], stats: any, analytics: any) => {
     toast.error("Failed to export data");
     return false;
   }
-};
-
-// Add other bulk action handlers if needed here...
-export const handleBulkActions = async (taskIds: string[], action: string) => {
-    // Implementation for bulk actions
-    console.log("Bulk action:", action, taskIds);
-};
-
-export const handleExportSelected = (taskIds: string[], tasks: any[]) => {
-    // Implementation for exporting selected tasks
-    const selected = tasks.filter(t => taskIds.includes(t.id));
-    handleExportData(selected, {}, {});
 };

@@ -1,8 +1,6 @@
 import React from 'react';
 import { ShieldCheck } from 'lucide-react';
 
-// --- Assets & Icons ---
-
 const TwitterLogo = () => (
   <svg viewBox="0 0 24 24" className="fill-current w-full h-full">
     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
@@ -21,8 +19,6 @@ const LinkedinLogo = () => (
   </svg>
 );
 
-// --- Helper Components ---
-
 const SocialButton = ({ icon, href }: { icon: React.ReactNode, href: string }) => (
   <a 
     href={href} 
@@ -37,8 +33,6 @@ const SocialButton = ({ icon, href }: { icon: React.ReactNode, href: string }) =
   </a>
 );
 
-// --- Main Footer Component ---
-
 const Footer = () => {
   return (
     <footer className="mt-20 pt-10 border-t border-white/5 text-center pb-8 w-full">
@@ -46,12 +40,11 @@ const Footer = () => {
         
         {/* Social Media Links */}
         <div className="flex justify-center items-center gap-6 mb-8 max-w-md mx-auto">
-           <SocialButton href="https://twitter.com" icon={<TwitterLogo />} />
-           <SocialButton href="https://facebook.com" icon={<FacebookLogo />} />
-           <SocialButton href="https://linkedin.com" icon={<LinkedinLogo />} />
+           <SocialButton href="https://x.com/gyantappas" icon={<TwitterLogo />} />
+           <SocialButton href="https://www.facebook.com/profile.php?id=61584618795158" icon={<FacebookLogo />} />
+           <SocialButton href="https://www.linkedin.com/in/vsav-gyantapa-33893a399/" icon={<LinkedinLogo />} />
         </div>
 
-        {/* Brand & Security Badge */}
         <div className="space-y-3">
           <h4 className="text-sm font-bold text-white tracking-[0.2em] uppercase">
             Margdarshak

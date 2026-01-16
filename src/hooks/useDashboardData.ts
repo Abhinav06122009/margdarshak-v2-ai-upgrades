@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { dashboardService } from '@/lib/dashboardService';
+import { handleDeleteTask as deleteUtil, handleBulkDeleteTasks as bulkDeleteUtil } from '@/lib/dashboardUtils';
 import type {
   SecureUser,
   RealDashboardStats,
@@ -43,71 +44,43 @@ export const useDashboardData = () => {
   const retryCountRef = useRef(0);
   const maxRetries = 3;
   const unsubscribeRef = useRef<(() => void) | null>(null);
-
   const handleSecureTaskUpdate = useCallback((data: any) => {
     const { eventType, new: newData, old: oldData } = data;
-    
     setRecentTasks(prev => {
       let updated = [...prev];
       const index = updated.findIndex(task => task.id === (newData?.id || oldData?.id));
       
       switch (eventType) {
         case 'INSERT':
-          if (newData && index === -1) { // Prevent duplicates from optimistic updates
-            updated.unshift(newData);
-          }
+          if (newData && index === -1) updated.unshift(newData);
           break;
         case 'UPDATE':
           if (index !== -1 && newData) {
-            updated[index] = newData;
+            if (newData.is_deleted) updated.splice(index, 1);
+            else updated[index] = newData;
           }
           break;
         case 'DELETE':
-          if (index !== -1) {
-            updated.splice(index, 1);
-          }
+          if (index !== -1) updated.splice(index, 1);
           break;
       }
-      
       return updated.slice(0, 20);
     });
-
-    if (eventType === 'UPDATE' && newData?.status === 'completed') {
-      toast({
-        title: "Task Completed! 🎉",
-        description: `Great job completing "${newData.title}"`,
-        className: "bg-gray-900/50 backdrop-blur-md border border-emerald-500/60 shadow-lg rounded-xl p-4 text-emerald-300 font-semibold"
-      });
-    }
-  }, [toast]);
+  }, []);
 
   const handleSecureSessionUpdate = useCallback((data: any) => {
     const { eventType, new: newData } = data;
     if (eventType === 'INSERT' && newData) {
       setRecentSessions(prev => [newData, ...prev].slice(0, 10));
-      toast({
-        title: "Study Session Recorded! 📚",
-        description: `${Math.floor((newData.duration || 0) / 60)}h ${(newData.duration || 0) % 60}m session added`,
-        className: "bg-gray-900/50 backdrop-blur-md border border-blue-500/60 shadow-lg rounded-xl p-4 text-blue-300 font-semibold",
-      });
     }
-  }, [toast]);
+  }, []);
 
   const handleSecureGradeUpdate = useCallback((data: any) => {
     const { eventType, new: newData } = data;
     if (eventType === 'INSERT' && newData) {
       setRecentGrades(prev => [newData, ...prev].slice(0, 10));
-      toast({
-        title: "New Grade Added! 📊",
-        description: `${newData.assignment_name}: ${(newData.percentage || 0).toFixed(1)}%`,
-        className: `bg-gray-900/50 backdrop-blur-md border shadow-lg rounded-xl p-4 font-semibold ${
-          (newData.percentage || 0) >= 90 ? 'border-emerald-400/50' :
-          (newData.percentage || 0) >= 70 ? 'border-yellow-400/50' :
-          'border-red-400/50'
-        }`,
-      });
     }
-  }, [toast]);
+  }, []);
 
   const handleSecureNoteUpdate = useCallback((data: any) => {
     const { eventType, new: newData } = data;
@@ -121,31 +94,15 @@ export const useDashboardData = () => {
       setLoading(true);
       const user = await dashboardService.getCurrentUser();
       if (!user) {
-        toast({
-          title: "Authentication Required",
-          description: "Please log in to access your dashboard.",
-          className: "bg-gray-900/50 backdrop-blur-md border border-red-500/60 shadow-lg rounded-xl p-4 text-red-300 font-semibold",
-        });
         setSecurityVerified(true);
         setLoading(false);
         return;
       }
-
       setCurrentUser(user);
       setSecurityVerified(true);
       
       const userData = await dashboardService.fetchAllUserData(user.id);
       const analyticsData = await dashboardService.calculateSecureAnalytics(user.id);
-
-      if (userData.errors && userData.errors.length > 0) {
-        console.error('Some data failed to load:', userData.errors);
-        toast({
-          title: "Partial Data Load",
-          description: "Some data may not be fully loaded. This is normal for new users.",
-          className: "bg-gray-900/50 backdrop-blur-md border border-yellow-500/60 shadow-lg rounded-xl p-4 text-yellow-300 font-semibold"
-        });
-      }
-
       const secureStats = dashboardService.calculateSecureStats(userData);
       
       setStats(secureStats);
@@ -158,7 +115,6 @@ export const useDashboardData = () => {
       setAnalytics(analyticsData);
 
       if (unsubscribeRef.current) unsubscribeRef.current();
-      
       unsubscribeRef.current = dashboardService.setupSecureRealTimeSubscription(
         user.id,
         {
@@ -168,49 +124,24 @@ export const useDashboardData = () => {
           onNoteUpdate: handleSecureNoteUpdate
         }
       );
-
-      toast({
-        title: "Dashboard Loaded Successfully! 🔒",
-        description: `Welcome back, ${user.profile?.full_name}! Your secure data is loaded.`,
-        className: "bg-gray-900/50 backdrop-blur-md border border-emerald-500/60 shadow-lg rounded-xl p-4 text-emerald-300 font-semibold"
-      });
-
     } catch (error) {
       console.error('Error initializing dashboard:', error);
-      toast({
-        title: "Dashboard Load Error",
-        description: `Failed to load dashboard data. ${retryCountRef.current < maxRetries ? 'Retrying...' : 'Please refresh the page.'}`,
-        className: "bg-gray-900/50 backdrop-blur-md border border-red-500/60 shadow-lg rounded-xl p-4 text-red-300 font-semibold"
-      });
-      
-      if (retryCountRef.current < maxRetries) {
-        retryCountRef.current++;
-        setTimeout(initializeDashboard, 2000 * retryCountRef.current);
-      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [toast, handleSecureTaskUpdate, handleSecureSessionUpdate, handleSecureGradeUpdate, handleSecureNoteUpdate]);
+  }, [handleSecureTaskUpdate, handleSecureSessionUpdate, handleSecureGradeUpdate, handleSecureNoteUpdate]);
 
   useEffect(() => {
     let isMounted = true;
-
     const handleOnlineStatus = () => setIsOnline(navigator.onLine);
     const handleOfflineStatus = () => setIsOnline(false);
-
     window.addEventListener('online', handleOnlineStatus);
     window.addEventListener('offline', handleOfflineStatus);
-
-    if (isMounted) {
-      initializeDashboard();
-    }
-
+    if (isMounted) initializeDashboard();
     return () => {
       isMounted = false;
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-      }
+      if (unsubscribeRef.current) unsubscribeRef.current();
       window.removeEventListener('online', handleOnlineStatus);
       window.removeEventListener('offline', handleOfflineStatus);
     };
@@ -225,53 +156,41 @@ export const useDashboardData = () => {
     if (!currentUser) return;
     try {
       const newTask = await dashboardService.createQuickTask(currentUser.id);
-      setRecentTasks(prev => [newTask, ...prev]); // Instantly update UI
-      toast({
-        title: "Task Created ✅",
-        description: "New task has been added to your list.",
-        className: "bg-gray-900/50 backdrop-blur-md border border-emerald-500/60 shadow-lg rounded-xl p-4 text-emerald-300 font-semibold flex items-center space-x-3",
-        icon: React.createElement(Plus, { className: "w-5 h-5 text-emerald-400" }),
-      });
+      setRecentTasks(prev => [newTask, ...prev]);
+      toast({ title: "Task Created ✅", description: "New task added." });
     } catch (error) {
-      toast({
-        title: "Creation Failed",
-        description: "Failed to create task",
-        variant: "destructive",
-      });
+      toast({ title: "Creation Failed", variant: "destructive" });
     }
   };
 
   const handleTaskStatusUpdate = async (taskId: string, newStatus: string) => {
     if (!currentUser) return;
-    
-    const originalTask = recentTasks.find(task => task.id === taskId);
-    if (!originalTask) return;
-
-    setRecentTasks(prev => 
-      prev.map(task => 
-        task.id === taskId ? { ...task, status: newStatus as any } : task
-      )
-    );
-
+    setRecentTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus as any } : t));
     try {
       await dashboardService.updateTaskStatus(taskId, newStatus, currentUser.id);
-      toast({
-        title: "Task Updated ✅",
-        description: `Task marked as ${newStatus}`,
-        className: "bg-gray-900/50 backdrop-blur-md border border-emerald-500/60 shadow-lg rounded-xl p-4 text-emerald-300 font-semibold",
-      });
     } catch (error) {
-      setRecentTasks(prev => 
-        prev.map(task => 
-          task.id === taskId ? originalTask : task
-        )
-      );
-      toast({
-        title: "Update Failed",
-        description: "Failed to update task status",
-        variant: "destructive",
-      });
+      console.error(error);
     }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    setRecentTasks(prev => prev.filter(t => t.id !== taskId));
+    
+    const success = await deleteUtil(taskId);
+    if (success) {
+      toast({
+        title: "Task Deleted",
+        description: "Task removed from your dashboard.",
+        className: "bg-red-500/10 text-red-400 border-red-500/20"
+      });
+    } else {
+      toast({ title: "Error", description: "Could not delete task", variant: "destructive" });
+    }
+  };
+
+  const handleBulkDelete = async (taskIds: string[]) => {
+    setRecentTasks(prev => prev.filter(t => !taskIds.includes(t.id)));
+    await bulkDeleteUtil(taskIds);
   };
 
   return {
@@ -292,5 +211,9 @@ export const useDashboardData = () => {
     handleRefresh,
     handleCreateQuickTask,
     handleTaskStatusUpdate,
+    handleDeleteTask,
+    handleBulkDelete,
+    ultimateSecurityData: null,
+    activeThreats: [] 
   };
 };

@@ -1,15 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
-
-// ==========================================
-// ⚠️ PASTE YOUR CREDENTIALS HERE TO TEST
-// ==========================================
 const SUPABASE_URL = 'https://orkoqwrdfygfkqqerqvh.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ya29xd3JkZnlnZmtxcWVycXZoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTY2NTUyMywiZXhwIjoyMDYxMjQxNTIzfQ.jQN1dOvqz-Bm6uQM074YlLOp2LLl6oBGyRMNsuUPcC8'; 
 
 async function testConnection() {
   console.log("\n🏥 Running Margdarshak Connection Doctor...\n");
 
-  // 1. VALIDATE URL FORMAT
   if (!SUPABASE_URL.startsWith("https://") || !SUPABASE_URL.includes(".supabase.co")) {
     console.error("❌ ERROR: Invalid URL Format!");
     console.error(`   Current: ${SUPABASE_URL}`);
@@ -17,7 +12,6 @@ async function testConnection() {
     return;
   }
 
-  // 2. VALIDATE KEY FORMAT
   if (!SUPABASE_KEY.startsWith("ey")) {
     console.error("❌ ERROR: Invalid Key Format!");
     console.error("   Supabase keys must start with 'ey...' (JWT format).");
@@ -28,13 +22,11 @@ async function testConnection() {
 
   console.log("📡 Attempting to contact Supabase Database...");
 
-  // 3. TRY A SIMPLE SELECT (Tests Connection & Table Existence)
   const { data, error } = await supabase.from('ai_knowledge').select('*').limit(1);
 
   if (error) {
     console.error("❌ CONNECTION FAILED");
     console.error("---------------------------------------------------");
-    // Print the FULL error object to see the real issue
     console.dir(error, { depth: null }); 
     console.error("---------------------------------------------------");
     

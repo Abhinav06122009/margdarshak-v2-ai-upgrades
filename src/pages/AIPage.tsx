@@ -13,8 +13,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { jsPDF } from "jspdf";
 
 type Mode = 'deepresearch' | 'quickchat';
-
-// 🛡️ SECURITY: Valid Tier IDs for Elite features
 const ELITE_TIERS = ['premium_elite', 'extra_plus', 'premium_plus', 'premium+elite'];
 
 interface Message {
@@ -34,8 +32,6 @@ const SmartTutorPage = () => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  
-  // Access Control
   const [userApiKey, setUserApiKey] = useState('');
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -78,10 +74,7 @@ const SmartTutorPage = () => {
   };
 
   const isEliteUser = () => ELITE_TIERS.includes(subscriptionTier);
-
-  // ✅ MAIN SEND FUNCTION
   const executeSend = async (textToSend: string, modeToUse: Mode, imageToSend: File | null = null) => {
-    // 🔒 LOGIC: IF NOT Elite, REQUIRE KEY
     if (!isEliteUser() && !userApiKey) {
       setShowKeyModal(true);
       return;
@@ -100,9 +93,6 @@ const SmartTutorPage = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       const headers: any = {
-        // 🧠 LOGIC: 
-        // 1. If Elite -> Do NOT send X-User-API-Key (Backend uses System Key)
-        // 2. If Free/Premium -> MUST send X-User-API-Key
         ...(!isEliteUser() && userApiKey ? { "X-User-API-Key": userApiKey } : {}),
         ...(session?.access_token ? { "Authorization": `Bearer ${session.access_token}` } : {})
       };
@@ -131,7 +121,6 @@ const SmartTutorPage = () => {
 
       const data = await response.json();
 
-      // --- GATEKEEPER RESPONSES ---
       if (data.response === "KEY_REQUIRED") {
         setMessages(prev => prev.slice(0, -1)); 
         setShowKeyModal(true);
@@ -151,7 +140,6 @@ const SmartTutorPage = () => {
         return;
       }
 
-      // Normal Response
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: data.response,

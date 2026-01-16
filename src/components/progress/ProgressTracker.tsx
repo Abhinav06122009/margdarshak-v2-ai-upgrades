@@ -77,10 +77,8 @@ interface SecureUser {
   };
 }
 
-// AI Coach Interfaces
 export type { Goal, ProgressStats };
 
-// Social Icons
 const linkedinLogo = () => (
   <svg viewBox="0 0 16 16" className="w-5 h-5 fill-current">
     <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
@@ -99,7 +97,6 @@ const FacebookLogo = () => (
   </svg>
 );
 
-// Enhanced Custom Styles with World-Class Color Matching
 const customStyles = `
   .bg-black
     background-size: 400% 400%;
@@ -289,7 +286,6 @@ const customStyles = `
   }
 `;
 
-// Function to add styles to the document head
 const addCustomStyles = () => {
   if (document.getElementById('progress-tracker-custom-styles')) {
     return;
@@ -301,8 +297,6 @@ const addCustomStyles = () => {
   styleSheet.innerText = customStyles;
   document.head.appendChild(styleSheet);
 };
-
-// Secure progress tracker helper functions with enhanced error handling
 const progressHelpers = {
   getCurrentUser: async (): Promise<SecureUser | null> => {
     try {
@@ -336,7 +330,6 @@ const progressHelpers = {
 
   ensureTablesExist: async () => {
   try {
-    // Test with simple select without auth restrictions
     const { data: goalsTest, error: goalsError } = await supabase
       .from('progress_goals')
       .select('id')
@@ -356,8 +349,6 @@ const progressHelpers = {
     }
     
     console.log('Tables test:', { goalsError, entriesError });
-    
-    // Return true if tables exist (regardless of data)
     return !goalsError && !entriesError;
   } catch (error) {
     console.log('Tables do not exist:', error);
@@ -411,7 +402,6 @@ const progressHelpers = {
 
   createGoal: async (userId: string, goalData: Partial<Goal>) => {
     try {
-      // Validate required fields
       if (!goalData.title || !goalData.category || !goalData.target_value || !goalData.unit) {
         throw new Error('Missing required fields');
       }
@@ -489,14 +479,12 @@ const progressHelpers = {
 
   deleteGoal: async (goalId: string, userId: string) => {
     try {
-      // First delete all progress entries for this goal
       await supabase
         .from('progress_entries')
         .delete()
         .eq('goal_id', goalId)
         .eq('user_id', userId);
 
-      // Then delete the goal
       const { error } = await supabase
         .from('progress_goals')
         .delete()
@@ -526,7 +514,6 @@ const progressHelpers = {
 
       if (error) throw error;
 
-      // Update goal's current value
       const { data: goal } = await supabase
         .from('progress_goals')
         .select('current_value, target_value')
@@ -567,17 +554,12 @@ const progressHelpers = {
       ? goals.reduce((sum, goal) => sum + Math.min((goal.current_value / goal.target_value) * 100, 100), 0) / goals.length
       : 0;
 
-    // Calculate weekly progress
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const weeklyEntries = entries.filter(entry => entry.date_recorded >= weekAgo);
     const weeklyProgress = weeklyEntries.reduce((sum, entry) => sum + entry.value, 0);
-
-    // Calculate monthly progress
     const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const monthlyEntries = entries.filter(entry => entry.date_recorded >= monthAgo);
     const monthlyProgress = monthlyEntries.reduce((sum, entry) => sum + entry.value, 0);
-
-    // Calculate streak (simplified)
     const streakDays = Math.min(7, weeklyEntries.length);
 
     return {
@@ -615,8 +597,6 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({ onBack }) => {
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [sortBy, setSortBy] = useState<'date' | 'progress' | 'priority'>('date');
-  
-  // Form states
   const [isAddGoalModalOpen, setIsAddGoalModalOpen] = useState(false);
   const [isAddProgressModalOpen, setIsAddProgressModalOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
@@ -656,8 +636,6 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({ onBack }) => {
   }>({ isOpen: false, goal: null, streakInfo: null });
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-
-  // AI Coach State
   const [recommendations, setRecommendations] = useState<GoalRecommendation[]>([]);
   const [adjustment, setAdjustment] = useState<GoalAdjustment | null>(null);
   const [tip, setTip] = useState<MotivationalTip | null>(null);
@@ -706,7 +684,6 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({ onBack }) => {
       setCurrentUser(user);
       setSecurityVerified(true);
       
-      // Check if tables exist
       const tablesExist = await progressHelpers.ensureTablesExist();
       console.log('Tables exist:', tablesExist);
       setDbTablesExist(tablesExist);
@@ -729,8 +706,6 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({ onBack }) => {
       
       const calculatedStats = progressHelpers.calculateStats(userGoals, userEntries);
       setStats(calculatedStats);
-
-      // Fetch AI Coach suggestions
       const [aiRecommendations, aiAdjustment, aiTip] = await Promise.all([
         smartCoachService.getPersonalizedRecommendations(userGoals, calculatedStats),
         smartCoachService.getSmartAdjustments(userGoals),
@@ -740,7 +715,6 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({ onBack }) => {
       setAdjustment(aiAdjustment.length > 0 ? aiAdjustment[0] : null);
       setTip(aiTip);
 
-  // Or a progress icon you like
 
 toast({
   title: (
@@ -780,7 +754,6 @@ toast({
     try {
       setSubmitting(true);
       
-      // Validate form
       if (!goalForm.title.trim() || !goalForm.category.trim() || !goalForm.target_value || !goalForm.unit.trim()) {
         toast({
           title: "Validation Error",
@@ -818,9 +791,9 @@ toast({
   ),
   className: "bg-black border border-green-400/50 shadow-xl",
   icon: <CheckCircle2 className="text-green-400" />,
-  duration: 5000,       // 5 seconds visible
-  isClosable: true,     // Show close button
-  position: "top-right" // Position on the screen
+  duration: 5000, 
+  isClosable: true,    
+  position: "top-right" 
 });
 
       } else {
@@ -838,9 +811,9 @@ toast({
   ),
   className: "bg-black border border-cyan-400/50 shadow-xl",
   icon: <PlusCircle className="text-cyan-400" />,
-  duration: 5000,       // Toast visible for 5 seconds
-  isClosable: true,     // Show close button
-  position: "top-right" // Set toast position on screen
+  duration: 5000,       
+  isClosable: true,     
+  position: "top-right" 
 });
 
       }
@@ -900,9 +873,9 @@ toast({
   ),
   className: "bg-black border border-emerald-400/50 shadow-xl",
   icon: <CheckCircle2 className="text-emerald-400" />,
-  duration: 5000,       // Toast visible for 5 seconds
-  isClosable: true,     // Show close button
-  position: "top-right" // Position on screen
+  duration: 5000,       
+  isClosable: true,    
+  position: "top-right" 
 });
 
 
@@ -1010,7 +983,7 @@ toast({
         icon: <ShieldCheck className="text-green-400" />,
       });
       setStreakModalState({ isOpen: false, goal: null, streakInfo: null });
-      await initializeProgressTracker(); // Refresh data
+      await initializeProgressTracker(); 
     } else {
       toast({ title: "Error", description: message, variant: "destructive" });
     }

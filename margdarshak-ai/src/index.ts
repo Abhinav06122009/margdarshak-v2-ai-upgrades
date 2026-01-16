@@ -19,13 +19,11 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
     try {
-      // 1. EXTRACT DATA
       const userApiKey = request.headers.get("X-User-API-Key");
       const authHeader = request.headers.get("Authorization");
       
       let messages, mode, imageFile;
 
-      // 2. PARSE BODY
       try {
         const formData = await request.clone().formData();
         messages = JSON.parse(formData.get("messages") as string);
@@ -49,25 +47,19 @@ export default {
       let agentType = "GENERAL"; 
       let optimizedQuery = rawUserQuery;
 
-      // 3. GATEKEEPER & SUBSCRIPTION CHECK
       let tier = 'free';
       const isAdvancedMode = mode === 'deepsearch' || mode === 'imagegen' || !!imageFile;
 
-      // If we need to verify subscription (No Key provided OR Advanced Mode requested)
       if (!activeApiKey || isAdvancedMode) {
         
         if (authHeader) {
-            // ✅ FIX: Initialize Supabase WITH the user's token
-            // This ensures RLS policies allow us to read the profile
             const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY, {
               global: { headers: { Authorization: authHeader } }
             });
-            
-            // Verify the user
+ 
             const { data: { user }, error: authError } = await supabase.auth.getUser();
 
             if (!authError && user) {
-                // Fetch Profile Tier
                 const { data: profile, error: profileError } = await supabase
                   .from('profiles')
                   .select('subscription_tier')
@@ -84,7 +76,6 @@ export default {
             return new Response(JSON.stringify({ response: "AUTH_REQUIRED" }), { headers: corsHeaders });
         }
 
-        // 🛡️ TIER CHECK: Robust Array
         const VALID_PREMIUM_AI_IDS = [
             'extra_plus', 
             'premium_ai', 
@@ -95,10 +86,8 @@ export default {
         
         const IS_PREMIUM_AI = VALID_PREMIUM_AI_IDS.includes(tier);
 
-        // 🔒 RULE 1: Advanced Modes -> LOCKED to Premium+AI
         if (isAdvancedMode) {
             if (!IS_PREMIUM_AI) {
-                 // 🛑 DEBUG INFO: This will show up in your frontend if it fails
                  return new Response(JSON.stringify({ 
                      response: "UPGRADE_TO_EXTRA",
                      debug_reason: `Your detected tier is '${tier}'. Mode '${mode}' requires Premium+AI.`
@@ -106,7 +95,6 @@ export default {
             }
         }
 
-        // 🔒 RULE 2: System API Key Assignment
         if (!activeApiKey) {
            if (IS_PREMIUM_AI) {
                activeApiKey = env.SAMBANOVA_API_KEY;
@@ -116,14 +104,12 @@ export default {
         }
       }
 
-      // Final Sanity Check
       if (!activeApiKey) {
         return new Response(JSON.stringify({ 
             response: `System Error: Key generation failed. Tier detected: ${tier}` 
         }), { headers: corsHeaders });
       }
 
-      // --- HELPER: Base64 ---
       const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
         let binary = '';
         const bytes = new Uint8Array(buffer);
@@ -131,7 +117,6 @@ export default {
         return btoa(binary);
       };
 
-      // --- HELPER: SambaNova API ---
       async function runSambaNovaModel(systemPrompt: string, userPrompt: string, maxTokens: number = 1000, jsonMode: boolean = false) {
         try {
           const response = await fetch("https://api.sambanova.ai/v1/chat/completions", {
@@ -156,7 +141,6 @@ export default {
         } catch (e: any) { return `CONNECTION ERROR: ${e.message}`; }
       }
 
-      // --- 4. PLANNER (Router) ---
       if (mode !== 'imagegen') {
         const planStr = await runSambaNovaModel(`Router: Classify (PHYSICS/CHEMISTRY/MATH/BIOLOGY/GENERAL). Output JSON: {"agent": "...", "optimized_query": "..."}`, rawUserQuery, 150, true);
         try { 
@@ -166,7 +150,6 @@ export default {
         } catch (e) {}
       }
 
-      // --- 5. VISION ---
       let visionContext = "";
       if (imageFile) {
         const imageArrayBuffer = await imageFile.arrayBuffer();
@@ -177,12 +160,10 @@ export default {
         visionContext = `[VISUAL DATA]: ${visionResult.description}`;
       }
 
-      // --- 6. RAG (Context) ---
       let pdfContext = "";
       let webContext = "";
       if (mode !== 'imagegen') {
         const embeddings = await env.AI.run("@cf/baai/bge-base-en-v1.5", { text: [optimizedQuery] });
-        // Use user-scoped client for RPC as well
         const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY, {
             global: { headers: authHeader ? { Authorization: authHeader } : undefined }
         });
@@ -203,7 +184,6 @@ export default {
         }
       }
 
-      // --- 7. IMAGE GEN (Flux) ---
       let generatedImgBase64 = null;
       let finalAnswer = "Visual generated.";
 
@@ -218,7 +198,7 @@ export default {
         } catch (imgError: any) { finalAnswer = "Visual gen failed: " + imgError.message; }
       }
 
-      // --- 8. EXECUTOR ---
+
       if (mode !== 'imagegen') {
          const VISUAL_INSTRUCTION = `
          - Visuals: Use 

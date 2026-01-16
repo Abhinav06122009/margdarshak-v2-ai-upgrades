@@ -1,5 +1,3 @@
-// src/components/progress/smartCoachService.ts
-
 import type { Goal, ProgressStats } from './ProgressTracker';
 
 export interface GoalRecommendation {

@@ -31,18 +31,15 @@ const ActionCard = ({
     onClick={onClick}
     className="group relative flex items-center p-4 w-full bg-[#0F0F0F] border border-white/5 rounded-2xl hover:bg-[#161616] transition-all duration-300 hover:scale-[1.02] active:scale-95 text-left shadow-lg"
   >
-    {/* Icon Box */}
     <div className={`p-3 rounded-xl bg-opacity-10 ${color} mr-4 border border-white/5 group-hover:scale-110 transition-transform`}>
       <Icon className={`w-5 h-5 ${color.replace('bg-', 'text-')}`} />
     </div>
-
-    {/* Text Info */}
     <div className="flex-1 min-w-0">
       <h4 className="text-sm font-bold text-gray-100 truncate">{title}</h4>
       <p className="text-[10px] text-gray-500 font-medium truncate">{subtitle}</p>
     </div>
 
-    {/* Arrow */}
+
     <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-white transition-colors opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
   </button>
 );
@@ -60,7 +57,6 @@ const QuickActions: React.FC<QuickActionsProps> = ({ stats, onNavigate }) => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
         
-        {/* 1. Schedule */}
         <ActionCard 
           icon={Calendar}
           title="Schedule"
@@ -87,7 +83,6 @@ const QuickActions: React.FC<QuickActionsProps> = ({ stats, onNavigate }) => {
           onClick={() => onNavigate('courses')}
         />
 
-        {/* 4. Calculator */}
         <ActionCard 
           icon={Calculator}
           title="Calculator"
@@ -96,7 +91,6 @@ const QuickActions: React.FC<QuickActionsProps> = ({ stats, onNavigate }) => {
           onClick={() => onNavigate('calculator')} // Ensure you have this route or modal
         />
 
-        {/* 5. Settings */}
         <ActionCard 
           icon={Settings}
           title="Settings"

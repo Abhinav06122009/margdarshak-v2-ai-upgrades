@@ -1,4 +1,3 @@
-// src/components/courses/recommendationService.ts
 import type { Course } from '@/components/dashboard/course';
 import type { Task } from '@/components/tasks/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,7 +18,6 @@ export interface CuratedContent {
   type: 'video' | 'article' | 'tutorial';
 }
 
-// Recommendation Logic
 const recommendationService = {
   getPersonalizedRecommendations: async (
     userId: string,
@@ -27,7 +25,6 @@ const recommendationService = {
   ): Promise<RecommendedCourse[]> => {
     const existingCourseIds = new Set(existingCourses.map(c => c.id));
     
-    // Fetch all courses from the database to act as the recommendation pool.
     const { data: allCoursesData, error } = await supabase
       .from('courses')
       .select('*');
@@ -41,7 +38,6 @@ const recommendationService = {
 
     const recommendations: RecommendedCourse[] = [];
 
-    // Suggest a more advanced course in the same category
     const lastCourse = existingCourses[existingCourses.length - 1];
     if (lastCourse && lastCourse.difficulty === 'beginner') {
       const nextLevelCourse = allCourses.find(c => !existingCourseIds.has(c.id) && c.difficulty === 'intermediate');
@@ -53,7 +49,6 @@ const recommendationService = {
       }
     }
 
-    // Suggest a popular or foundational course if not already taken (example: Data Structures)
     const foundationalCourse = allCourses.find(c => c.code?.toUpperCase().includes('CS') && c.difficulty === 'intermediate' && !existingCourseIds.has(c.id));
     if (foundationalCourse) {
         recommendations.push({
@@ -62,7 +57,6 @@ const recommendationService = {
         });
     }
 
-    // Add another general recommendation for a different category
      const anotherRec = allCourses.find(c => !c.code?.toUpperCase().includes('CS') && !existingCourseIds.has(c.id));
      if (anotherRec && recommendations.length < 2) {
          recommendations.push({
@@ -71,7 +65,6 @@ const recommendationService = {
          });
      }
 
-    // Fallback: suggest any course not already taken
     if (recommendations.length < 3) {
       const fallbacks = allCourses.filter(c => !existingCourseIds.has(c.id) && !recommendations.some(r => r.id === c.id));
       for (const fallback of fallbacks) {
@@ -80,12 +73,10 @@ const recommendationService = {
       }
     }
 
-    return recommendations.slice(0, 3); // Return top 3 recommendations
+    return recommendations.slice(0, 3);
   },
 
   generateLearningPath: async (userId: string, goal: string): Promise<LearningPath> => {
-    // In a real app, this would be a complex query or ML model call.
-    // For now, we'll fetch some courses and arrange them by difficulty.
     const { data: allCourses, error } = await supabase.from('courses').select('*');
     if (error || !allCourses) return { title: 'Could not generate path', description: 'Error fetching courses.', steps: [] };
 
@@ -98,7 +89,7 @@ const recommendationService = {
     return {
       title: 'Full-Stack Developer Learning Path',
       description: 'A recommended sequence of courses to achieve your goal.',
-      steps: steps.length > 1 ? steps : [ // Provide a fallback if not enough courses are found
+      steps: steps.length > 1 ? steps : [
         { id: 'db-102', name: 'Database Design', code: 'DB102', difficulty: 'beginner', priority: 'medium', credits: 3, description: 'Understand relational database design.' },
         { id: 'ds-201', name: 'Data Structures & Algorithms', code: 'DS201', difficulty: 'intermediate', priority: 'high', credits: 4, description: 'Master core data structures.' },
         { id: 'web-301', name: 'Advanced Web Development', code: 'WEB301', difficulty: 'advanced', priority: 'high', credits: 4, description: 'Build complex web applications.' },
@@ -107,7 +98,6 @@ const recommendationService = {
   },
 
   getCuratedContent: async (course: Course): Promise<CuratedContent[]> => {
-    // Mock fetching curated content from external APIs
     return [
       { title: `Crash Course: ${course.name}`, url: 'https://youtube.com', type: 'video' },
       { title: `In-depth article on ${course.code}`, url: 'https://medium.com', type: 'article' },
