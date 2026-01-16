@@ -1,19 +1,20 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * MARGDARSHAK SMART SERVICE - ELITE EDITION
- * Provider: Client-side Engine
- * Persistence: Cloud Context Memory
+ * MARGDARSHAK INTELLIGENCE CORE
+ * -----------------------------
+ * This service handles all AI interactions via the Puter.js bridge.
+ * It manages context (memory), image generation, and chat persistence.
+ * * @author Abhinav Jha
  */
 
-// DECLARE GLOBAL INTERFACE
+// --- Global Types ---
 declare global {
   interface Window {
-    puter: any;
+    puter: any; // The bridge to our AI provider
   }
 }
 
-// --- INTERFACES ---
 export interface UserStats {
   studyStreak: number;
   tasksCompleted: number;
@@ -28,57 +29,73 @@ export interface AIBriefing {
   color: string;
 }
 
-// --- HELPER: ROBUST JSON EXTRACTOR ---
-const extractJson = (text: string): any => {
+// --- Utilities ---
+
+/**
+ * A robust JSON parser that handles occasional AI formatting errors.
+ * Sometimes the AI adds text before/after the JSON, this cleans it up.
+ */
+const cleanAndParseJSON = (text: string): any => {
   try {
-    const startIndex = text.indexOf("{");
-    const endIndex = text.lastIndexOf("}");
-    if (startIndex === -1 || endIndex === -1) return null;
-    return JSON.parse(text.substring(startIndex, endIndex + 1));
-  } catch {
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start === -1 || end === -1) return null;
+    return JSON.parse(text.substring(start, end + 1));
+  } catch (err) {
+    console.warn("AI returned malformed JSON, using fallback.", err);
     return null;
   }
 };
 
+// --- Core Service ---
+
 export const aiService = {
+  
   /**
-   * GET CONTEXT MEMORY
+   * RECALL CONTEXT (Memory)
+   * Fetches the last 10 interactions so the AI remembers the conversation context.
    */
   getNeuralContext: async (userId: string) => {
     try {
-      const uuidRegex =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      // 1. Validate UUID to prevent database errors
+      const uuidFormat = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidFormat.test(userId)) return [];
 
-      if (!uuidRegex.test(userId)) return [];
-
+      // 2. Fetch history from Supabase
       const { data, error } = await supabase
-        .from("ai_neural_memory") // Table name remains to avoid DB breakage
+        .from("ai_neural_memory")
         .select("role, content")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
-        .limit(10);
+        .limit(10); // Limit context to save tokens
 
       if (error) throw error;
+      
+      // 3. Reverse to chronological order (Oldest -> Newest)
       return data?.reverse() || [];
+
     } catch (e) {
-      console.error("Context error:", e);
+      console.error("Failed to recall memory:", e);
       return [];
     }
   },
 
   /**
    * GENERATE IMAGE
+   * Takes a user prompt and converts it into an image using the AI driver.
    */
   generateImage: async (prompt: string) => {
     try {
-      const puter = window.puter;
-      if (!puter) return "SYSTEM_ERROR: Service Driver Missing.";
+      // Check if driver is loaded
+      if (!window.puter) return "SYSTEM_ERROR: AI Driver not loaded.";
 
-      if (!puter.auth.isSignedIn()) {
-        await puter.auth.signIn();
+      // Auto-login if needed
+      if (!window.puter.auth.isSignedIn()) {
+        await window.puter.auth.signIn();
       }
 
-      const cleanPrompt = prompt
+      // Cleanup the prompt: Remove conversational filler to focus on the visual
+      const visualPrompt = prompt
         .replace(/^(can you|please|kindly|just)\s+/i, "")
         .replace(
           /(draw|generate|create|show|make|visualize).*(image|picture|photo|diagram|sketch|illustration)( of)?/i,
@@ -86,57 +103,66 @@ export const aiService = {
         )
         .trim();
 
-      const finalPrompt = cleanPrompt || prompt;
-
-      const imageElement = await puter.ai.txt2img(finalPrompt);
+      // Use the raw prompt if cleanup emptied it
+      const finalPrompt = visualPrompt || prompt;
+      
+      const imageElement = await window.puter.ai.txt2img(finalPrompt);
       return imageElement?.src || "IMAGE_GENERATION_FAILED";
 
     } catch (error: any) {
-      console.error("Image Gen Error:", error);
+      console.error("Image Gen Failed:", error);
       return `IMAGE_ERROR: ${error.message}`;
     }
   },
 
   /**
-   * SEND MESSAGE
+   * SEND MESSAGE (Chat)
+   * The main loop: Get context -> Send to AI -> Save response.
    */
   sendMessage: async (userId: string, prompt: string) => {
     try {
-      const puter = window.puter;
-      if (!puter) return "SYSTEM_ERROR: Service Driver Missing.";
+      if (!window.puter) return "SYSTEM_ERROR: AI Driver not loaded.";
 
-      if (!puter.auth.isSignedIn()) {
-        await puter.auth.signIn();
+      if (!window.puter.auth.isSignedIn()) {
+        await window.puter.auth.signIn();
       }
 
+      // 1. Build Context
       const history = await aiService.getNeuralContext(userId);
       const messages = [...history, { role: "user", content: prompt }];
 
-      const response = await puter.chat(messages);
+      // 2. Get AI Response
+      const response = await window.puter.chat(messages);
 
+      // 3. Parse Response (Handle different return types)
       let aiResponse = "";
-      if (typeof response === "string") aiResponse = response;
-      else if (response?.message?.content)
+      if (typeof response === "string") {
+        aiResponse = response;
+      } else if (response?.message?.content) {
         aiResponse = response.message.content;
-      else aiResponse = JSON.stringify(response);
+      } else {
+        aiResponse = JSON.stringify(response);
+      }
 
+      // 4. Save to Memory
       await aiService.persistMessage(userId, prompt, aiResponse);
+      
       return aiResponse;
 
     } catch (error: any) {
-      console.error("Critical Service Error:", error);
+      console.error("Chat Error:", error);
       return `SYSTEM_ERROR: ${error.message || "Connection failed"}`;
     }
   },
 
   /**
    * PERSIST MESSAGE
+   * Saves the interaction to the database for future context.
    */
   persistMessage: async (userId: string, userMsg: string, aiMsg: string) => {
-    const uuidRegex =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-    if (!uuidRegex.test(userId)) return;
+    // strict UUID check
+    const uuidFormat = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidFormat.test(userId)) return;
 
     await supabase.from("ai_neural_memory").insert([
       { user_id: userId, role: "user", content: userMsg },
@@ -146,37 +172,40 @@ export const aiService = {
 
   /**
    * DAILY BRIEFING
+   * Generates the personalized dashboard greeting.
    */
   generateDailyBriefing: async (
     userId: string,
     userName: string
   ): Promise<AIBriefing> => {
-    const prompt = `
-SYSTEM_PROTOCOL: DAILY_BRIEFING
-USER: ${userName}
-RETURN JSON:
-{"greeting":"","focus_area":"","message":"","color":"text-emerald-400"}
-`;
+    // Explicit system prompt to force JSON format
+    const systemPrompt = `
+      SYSTEM_PROTOCOL: DAILY_BRIEFING
+      USER: ${userName}
+      TASK: Generate a motivating morning briefing.
+      FORMAT: Valid JSON Only.
+      STRUCTURE: {"greeting":"","focus_area":"","message":"","color":"text-emerald-400"}
+    `;
 
     try {
-      const puter = window.puter;
-      if (!puter) throw new Error("Service Driver Missing");
+      if (!window.puter) throw new Error("Service Driver Missing");
 
-      const response = await puter.chat(prompt);
-      const raw =
-        typeof response === "string"
-          ? response
-          : response?.message?.content;
+      const response = await window.puter.chat(systemPrompt);
+      const rawContent = typeof response === "string" 
+        ? response 
+        : response?.message?.content;
 
-      const parsed = extractJson(raw);
-      if (!parsed) throw new Error("Invalid JSON");
+      const briefing = cleanAndParseJSON(rawContent);
+      if (!briefing) throw new Error("Invalid JSON from AI");
 
-      return parsed;
-    } catch {
+      return briefing;
+
+    } catch (e) {
+      // Graceful fallback so the dashboard doesn't break
       return {
         greeting: `Welcome, ${userName}`,
-        focus_area: "OFFLINE",
-        message: "Service connection unavailable.",
+        focus_area: "System Check",
+        message: "AI services are initializing...",
         color: "text-gray-400"
       };
     }

@@ -8,6 +8,8 @@ import { AnimatedButton } from '@/components/ui/animated-button';
 import { AnimatedCard } from '@/components/ui/animated-card';
 import { Link } from 'react-router-dom';
 import logo from "@/components/logo/logo.png";
+import { SecuritySentry } from '@/security/sentry';
+import { startBioTracker, analyzeUserBehavior } from '@/security/biometrics';
 
 interface AuthPageProps {
   onLogin: () => void;
@@ -772,6 +774,26 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
   const handleMouseLeave = () => { x.set(0); y.set(0); };
 
   const countryDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // 1. Start tracking mouse/keyboard patterns immediately
+    startBioTracker();
+
+    const initSecurity = async () => {
+      // 2. Run the Sentry Check
+      const report = await SecuritySentry.performSecurityScan();
+      
+      // 3. (Optional) Log the result to your console or state
+      console.log("🛡️ Security Status:", report.riskLevel);
+      
+      if (report.riskLevel === 'CRITICAL') {
+         // You can disable the login button here if you want
+         toast({ title: "Security Alert", description: "Unusual traffic detected.", variant: "destructive" });
+      }
+    };
+
+    initSecurity();
+}, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

@@ -5,8 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-
-// UI & Providers
+import { startBioTracker } from '@/security/biometrics';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,7 +14,7 @@ import CookieConsent from '@/components/CookieConsent';
 import AdSenseScript from '@/components/AdSenseScript';
 import { Button } from '@/components/ui/button';
 
-// Pages
+
 import LandingPage from '@/pages/LandingPage';
 import Index from "@/pages/Index";
 import Dashboard from "@/components/dashboard/Dashboard";
@@ -167,10 +166,12 @@ const AnimatedPage = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-// --- Main App ---
 
 const AppContent = () => {
   const navigate = useNavigate();
+  useEffect(() => {
+    startBioTracker();
+  }, []);
   
   return (
     <>
