@@ -18,8 +18,9 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     
-    # FINAL CSP UPDATE:
-    # 1. font-src: Added 'https://cdn.fontshare.com' (Fixes your font errors)
-    # 2. frame-src: Added 'https://googleads.g.doubleclick.net' (Fixes ad framing)
-    # 3. script-src: Added 'https://ep2.adtrafficquality.google' (Fixes the sodar2.js error)
-    Content-Security-Policy = "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: https://ep2.adtrafficquality.google; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https: https://cdn.fontshare.com; connect-src 'self' https: wss:; frame-src 'self' https: https://googleads.g.doubleclick.net;"
+    # THE FINAL SECURITY POLICY
+    # This allows:
+    # 1. Google Ads (doubleclick, adtrafficquality, googlesyndication)
+    # 2. Fontshare (cdn.fontshare.com)
+    # 3. Puter (api.puter.com)
+    Content-Security-Policy = "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: *.google.com *.gstatic.com *.googlesyndication.com https://ep2.adtrafficquality.google; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https: https://cdn.fontshare.com; connect-src 'self' https: wss:; frame-src 'self' https: *.doubleclick.net *.googlesyndication.com;"

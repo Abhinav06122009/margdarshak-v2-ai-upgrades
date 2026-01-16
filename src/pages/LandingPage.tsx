@@ -134,7 +134,7 @@ const Preloader = () => (
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
       >
-        <img src="src/components/logo/logo.png" alt="Logo" className="h-16 w-16 rounded-full" />
+        <img src="public/logo.png" alt="Logo" className="h-16 w-16 rounded-full" />
       </motion.div>
       <motion.h1
         initial={{ y: 20, opacity: 0 }}
@@ -684,7 +684,7 @@ const Footer = () => (
   <footer className="bg-gray-950 border-t border-white/5 py-12">
     <div className="container mx-auto px-6 text-center text-gray-400">
       <div className="flex justify-center items-center gap-3 mb-6">
-        <img src="src/components/logo/logo.png" alt="Logo" className="h-6 w-6 rounded-md" />
+        <img src="public/logo.png" alt="Logo" className="h-6 w-6 rounded-md" />
         <h1 className="text-xl font-bold tracking-wider text-white">MARGDARSHAK</h1>
       </div>
       <div className="flex justify-center space-x-6 mb-6">
@@ -1037,7 +1037,7 @@ const Header = () => {
     >
       <div className="container mx-auto px-6 flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <img src="src/components/logo/logo.png" alt="Logo" className="h-6 w-6 rounded-md" />
+          <img src="public/logo.png" alt="Logo" className="h-6 w-6 rounded-md" />
           <h1 className="text-2xl font-black tracking-wider text-white">MARGDARSHAK</h1>
         </div>
         <ul className="hidden md:flex items-center space-x-8 font-medium">

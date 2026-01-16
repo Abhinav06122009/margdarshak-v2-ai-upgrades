@@ -3,7 +3,7 @@ import { motion, useAnimation } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import { Link, useNavigate } from 'react-router-dom';
 import { BarChart, BookOpen, Calendar, CheckSquare, Cpu, Shield, Zap, Star, MessageSquare, Twitter, Linkedin, Github, CheckCircle2, Clock, Target, TrendingUp, Users, CheckCircle } from 'lucide-react';
-import logo from "@/components/logo/logo.png";
+import logo from "public/logo.png";
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
