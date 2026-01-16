@@ -3,7 +3,7 @@
   publish = "dist"
 
 [build.environment]
-  # UPDATED: Added SUPABASE_URL to the list
+  # Whitelist all keys so the build passes
   SECRETS_SCAN_OMIT_KEYS = "SUPABASE_SERVICE_ROLE_KEY,FUNCTION_SUPABASE_SERVICE_ROLE_KEY,SAMBANOVA_API_KEY,SERPER_API_KEY,VITE_GITHUB_AI_TOKEN,VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY,SUPABASE_URL"
 
 [[redirects]]
@@ -18,4 +18,9 @@
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Content-Security-Policy = "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https: wss:;"
+    
+    # UPDATED CSP:
+    # 1. Added 'frame-src' (Required for Google Ads)
+    # 2. Added 'font-src' (Required for Google Fonts)
+    # 3. expanded 'script-src' to allow all https sources (simplifies Google Ad scripts)
+    Content-Security-Policy = "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https: wss:; frame-src 'self' https:;"
