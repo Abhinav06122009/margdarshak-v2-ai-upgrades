@@ -189,7 +189,7 @@ export const useSecureNotes = () => {
   const [loading, setLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
   const [noteToShare, setNoteToShare] = useState<Note | null>(null);
-  const [isProcessingAI, setIsProcessingAI] = useState(false);
+  const [isProcessingSummary, setIsProcessingSummary] = useState(false);
   const [securityVerified, setSecurityVerified] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolder, setSelectedFolder] = useState('all');
@@ -366,24 +366,24 @@ export const useSecureNotes = () => {
     setShowShareModal(false);
   };
 
-  const getAISummary = async (content: string): Promise<string | null> => {
+  const getSmartSummary = async (content: string): Promise<string | null> => {
     if (!content) {
       toast({ title: "Content required", description: "Please provide content to summarize.", variant: "destructive" });
       return null;
     }
-    setIsProcessingAI(true);
+    setIsProcessingSummary(true);
     try {
       const { data, error } = await supabase.functions.invoke('summarize-note', {
         body: { content },
       });
       if (error) throw error;
-      showSecureToast("Summary Generated!", "AI has summarized your note.", <Sparkles className="text-emerald-400" />);
+      showSecureToast("Summary Generated!", "Smart summary generated.", <Sparkles className="text-emerald-400" />);
       return data.summary;
     } catch (error: any) {
-      toast({ title: "AI Summarization Failed", description: error.message, variant: "destructive" });
+      toast({ title: "Summary Generation Failed", description: error.message, variant: "destructive" });
       return null;
     } finally {
-      setIsProcessingAI(false);
+      setIsProcessingSummary(false);
     }
   };
 
@@ -423,5 +423,5 @@ export const useSecureNotes = () => {
   const getRecentNotes = () => notes.slice(0, 5);
   const getHighlightedNotes = () => notes.filter(note => note.is_highlighted);
 
-  return { currentUser, notes, folders, noteStats, isSheetOpen, setIsSheetOpen, editingNote, loading, securityVerified, isProcessingAI, getAISummary, searchTerm, setSearchTerm, selectedFolder, selectedNotes, currentView, setCurrentView, formData, setFormData, handleSubmit, handleEdit, handleDelete, handleBulkDelete, handleToggleFavorite, handleSearch, handleFolderSelect, handleCreateNote, getRecentNotes, getHighlightedNotes, refreshNotes, showShareModal, noteToShare, openShareModal, closeShareModal, isSubmitting, handleSelectNote, handleSelectAllNotes, handleExportCSV, handleExportPDF, hasPremiumAccess };
+  return { currentUser, notes, folders, noteStats, isSheetOpen, setIsSheetOpen, editingNote, loading, securityVerified, isProcessingSummary, getSmartSummary, searchTerm, setSearchTerm, selectedFolder, selectedNotes, currentView, setCurrentView, formData, setFormData, handleSubmit, handleEdit, handleDelete, handleBulkDelete, handleToggleFavorite, handleSearch, handleFolderSelect, handleCreateNote, getRecentNotes, getHighlightedNotes, refreshNotes, showShareModal, noteToShare, openShareModal, closeShareModal, isSubmitting, handleSelectNote, handleSelectAllNotes, handleExportCSV, handleExportPDF, hasPremiumAccess };
 };

@@ -19,7 +19,7 @@ export interface CuratedContent {
   type: 'video' | 'article' | 'tutorial';
 }
 
-// Mock AI/ML logic
+// Recommendation Logic
 const recommendationService = {
   getPersonalizedRecommendations: async (
     userId: string,
