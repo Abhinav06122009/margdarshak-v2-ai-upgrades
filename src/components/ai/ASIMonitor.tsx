@@ -1,37 +1,48 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, ShieldCheck, Wifi } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
-export const SystemMonitor = ({ isProcessing }: { isProcessing: boolean }) => {
-  const [latency, setLatency] = useState(0);
+export const SystemMonitor = () => {
+  const [status, setStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
+  const [lastPing, setLastPing] = useState<number | null>(null);
 
+  // Real human engineering: Check the actual database connection
   useEffect(() => {
-    if (isProcessing) {
-      const start = Date.now();
-      const interval = setInterval(() => {
-        setLatency(Date.now() - start);
-      }, 100);
-      return () => clearInterval(interval);
-    } else {
-      setLatency(0);
-    }
-  }, [isProcessing]);
+    const checkConnection = async () => {
+      const start = performance.now();
+      const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
+      const end = performance.now();
+      
+      setStatus(error ? 'disconnected' : 'connected');
+      if (!error) setLastPing(Math.round(end - start));
+    };
+
+    checkConnection();
+    // Poll every 30s (sensible resource usage)
+    const interval = setInterval(checkConnection, 30000); 
+    return () => clearInterval(interval);
+  }, []);
 
   return (
-    <div className="flex items-center gap-6 px-6 py-2 bg-emerald-500/5 border-t border-white/5 backdrop-blur-md">
+    <div className="flex items-center gap-4 px-4 py-2 bg-zinc-900/50 border border-white/10 rounded-full backdrop-blur-sm text-xs font-medium text-zinc-400">
       <div className="flex items-center gap-2">
-        <Activity size={12} className={isProcessing ? "text-emerald-500 animate-pulse" : "text-slate-600"} />
-        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-          Latency: <span className="text-emerald-500 font-mono">{latency}ms</span>
+        {status === 'checking' && <RefreshCw size={14} className="animate-spin text-zinc-500" />}
+        {status === 'connected' && <Wifi size={14} className="text-emerald-500" />}
+        {status === 'disconnected' && <WifiOff size={14} className="text-red-500" />}
+        
+        <span>
+          {status === 'checking' && 'Syncing...'}
+          {status === 'connected' && 'Systems Nominal'}
+          {status === 'disconnected' && 'Offline'}
         </span>
       </div>
-      <div className="flex items-center gap-2">
-        <ShieldCheck size={12} className="text-emerald-500" />
-        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Gate: Secure</span>
-      </div>
-      <div className="flex items-center gap-2 ml-auto">
-        <Wifi size={12} className="text-emerald-500" />
-        <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500 animate-pulse">System Link: Online</span>
-      </div>
+
+      {lastPing && (
+        <>
+          <div className="h-3 w-px bg-white/10" />
+          <span className="font-mono text-zinc-500">{lastPing}ms</span>
+        </>
+      )}
     </div>
   );
 };
