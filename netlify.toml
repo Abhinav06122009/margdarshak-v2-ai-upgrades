@@ -3,7 +3,6 @@
   publish = "dist"
 
 [build.environment]
-  # Whitelist all keys so the build passes
   SECRETS_SCAN_OMIT_KEYS = "SUPABASE_SERVICE_ROLE_KEY,FUNCTION_SUPABASE_SERVICE_ROLE_KEY,SAMBANOVA_API_KEY,SERPER_API_KEY,VITE_GITHUB_AI_TOKEN,VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY,SUPABASE_URL"
 
 [[redirects]]
@@ -19,8 +18,8 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     
-    # UPDATED CSP:
-    # 1. Added 'frame-src' (Required for Google Ads)
-    # 2. Added 'font-src' (Required for Google Fonts)
-    # 3. expanded 'script-src' to allow all https sources (simplifies Google Ad scripts)
-    Content-Security-Policy = "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https: wss:; frame-src 'self' https:;"
+    # FINAL CSP UPDATE:
+    # 1. font-src: Added 'https://cdn.fontshare.com' (Fixes your font errors)
+    # 2. frame-src: Added 'https://googleads.g.doubleclick.net' (Fixes ad framing)
+    # 3. script-src: Added 'https://ep2.adtrafficquality.google' (Fixes the sodar2.js error)
+    Content-Security-Policy = "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: https://ep2.adtrafficquality.google; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https: https://cdn.fontshare.com; connect-src 'self' https: wss:; frame-src 'self' https: https://googleads.g.doubleclick.net;"
