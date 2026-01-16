@@ -2,6 +2,10 @@
   command = "npm run build"
   publish = "dist"
 
+[build.environment]
+  # UPDATED: Added VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY so the build passes
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_SERVICE_ROLE_KEY,FUNCTION_SUPABASE_SERVICE_ROLE_KEY,SAMBANOVA_API_KEY,SERPER_API_KEY,VITE_GITHUB_AI_TOKEN,VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
@@ -14,9 +18,5 @@
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Content-Security-Policy = "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https:;"
-    # netlify.toml
-
-[build.environment]
-  # Tell Netlify to ignore the Supabase keys during the security scan
- SECRETS_SCAN_OMIT_KEYS = "SUPABASE_SERVICE_ROLE_KEY,FUNCTION_SUPABASE_SERVICE_ROLE_KEY,SAMBANOVA_API_KEY,SERPER_API_KEY,VITE_GITHUB_AI_TOKEN"
+    # Note: I added 'wss:' to connect-src below so Puter works
+    Content-Security-Policy = "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https: wss:;"
