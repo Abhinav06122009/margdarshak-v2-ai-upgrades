@@ -390,4 +390,73 @@ const SmartTutorPage = () => {
   );
 };
 
+import React from "react";
+import PageLayout from "@/components/layout/PageLayout";
+import { Bot, Sparkles, Zap } from "lucide-react";
+// Import your actual Chat Interface component here. 
+// If you don't have a separate file, you can put the chat code inside the div below.
+import ChatInterface from "@/components/dashboard/AIBriefingWidget"; // Placeholder import
+
+const AIPage = () => {
+  return (
+    <PageLayout 
+      title="AI Personal Tutor" 
+      description="Your 24/7 academic assistant for solving problems, summarizing notes, and explaining complex topics."
+      showBack={true}
+    >
+      <div className="grid lg:grid-cols-3 gap-8">
+        {/* Main Chat Area */}
+        <div className="lg:col-span-2 h-[600px] bg-black/40 border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative flex flex-col">
+           {/* Replace this with your actual Chat UI */}
+           <div className="flex-1 flex items-center justify-center text-slate-500">
+              <p>Initialize Chat Interface...</p> 
+           </div>
+        </div>
+
+        {/* Sidebar Info */}
+        <div className="space-y-6">
+          <div className="p-6 bg-gradient-to-br from-emerald-900/20 to-black border border-emerald-500/20 rounded-3xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400"><Bot size={24} /></div>
+              <h3 className="font-bold text-white">Capabilities</h3>
+            </div>
+            <ul className="space-y-3 text-sm text-slate-300">
+              <li className="flex gap-2"><Sparkles size={16} className="text-yellow-400 shrink-0" /> Step-by-step math solving</li>
+              <li className="flex gap-2"><Sparkles size={16} className="text-yellow-400 shrink-0" /> Essay brainstorming</li>
+              <li className="flex gap-2"><Sparkles size={16} className="text-yellow-400 shrink-0" /> Code debugging (Python/JS)</li>
+            </ul>
+          </div>
+
+          <div className="p-6 bg-white/5 border border-white/10 rounded-3xl">
+            <h3 className="font-bold text-white mb-2">Power Prompts</h3>
+            <p className="text-xs text-slate-400 mb-4">Try asking:</p>
+            <div className="space-y-2">
+              <code className="block bg-black/50 p-3 rounded-lg text-xs text-blue-300 font-mono border border-white/5 cursor-pointer hover:border-blue-500/50 transition-colors">
+                "Explain Quantum Entanglement like I'm 5."
+              </code>
+              <code className="block bg-black/50 p-3 rounded-lg text-xs text-blue-300 font-mono border border-white/5 cursor-pointer hover:border-blue-500/50 transition-colors">
+                "Create a revision quiz for Calculus Ch 1."
+              </code>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ADSENSE CONTENT WRAPPER */}
+      <div className="mt-20 max-w-4xl mx-auto prose prose-invert">
+        <h2 className="text-3xl font-bold mb-6">How AI Revolutionizes Personalized Learning</h2>
+        <p className="text-lg text-slate-400 leading-relaxed mb-6">
+          The educational landscape is shifting from a "one-size-fits-all" model to hyper-personalized instruction. With tools like MARGDARSHAK AI, students can now bridge the "2 Sigma Problem"—the gap between classroom instruction and 1-on-1 tutoring.
+        </p>
+        <h3 className="text-2xl font-bold mb-4">Immediate Feedback Loop</h3>
+        <p className="text-slate-400 leading-relaxed mb-6">
+          Cognitive science shows that the speed of feedback is critical for learning retention. When practicing alone, a student might reinforce a mistake for hours. An AI Tutor interrupts this cycle by identifying logic errors instantly, ensuring that practice remains productive.
+        </p>
+      </div>
+    </PageLayout>
+  );
+};
+
+export default AIPage;
+
 export default SmartTutorPage;
