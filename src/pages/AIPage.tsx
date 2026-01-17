@@ -390,6 +390,4 @@ const SmartTutorPage = () => {
   );
 };
 
-export default AIPage;
-
 export default SmartTutorPage;
