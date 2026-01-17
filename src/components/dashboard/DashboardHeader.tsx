@@ -9,6 +9,7 @@ import type { SecureUser } from '@/types/dashboard';
 
 interface DashboardHeaderProps {
   currentUser: SecureUser;
+  realRole?: string | null; // Added prop for forced role
   isOnline: boolean;
   refreshing: boolean;
   onRefresh: () => void;
@@ -17,7 +18,16 @@ interface DashboardHeaderProps {
   extraActions?: React.ReactNode;
 }
 
-const DashboardHeader: React.FC<DashboardHeaderProps> = ({ currentUser, isOnline, refreshing, onRefresh, onExport, onOpenFeatureSpotlight, extraActions }) => {
+const DashboardHeader: React.FC<DashboardHeaderProps> = ({ 
+  currentUser, 
+  realRole, // Use this
+  isOnline, 
+  refreshing, 
+  onRefresh, 
+  onExport, 
+  onOpenFeatureSpotlight, 
+  extraActions 
+}) => {
   const { toast } = useToast();
   const logoX = useMotionValue(0);
   const logoY = useMotionValue(0);
@@ -41,6 +51,9 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ currentUser, isOnline
       });
     }
   };
+
+  // Logic to determine display role
+  const displayRole = (realRole || currentUser.profile?.role || "STUDENT").toUpperCase();
 
   return (
     <motion.div
@@ -113,7 +126,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ currentUser, isOnline
             </div>
             <div className="text-emerald-400 text-xs font-bold uppercase flex items-center gap-1.5">
               <Shield className="w-3 h-3" />
-              {currentUser.profile?.role || "STUDENT"}
+              {displayRole} 
             </div>
           </div>
         </motion.div>

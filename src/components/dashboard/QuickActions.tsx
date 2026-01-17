@@ -60,9 +60,9 @@ const QuickActions: React.FC<QuickActionsProps> = ({ stats, onNavigate }) => {
         <ActionCard 
           icon={Calendar}
           title="Schedule"
-          subtitle="1 upcoming class"
+          subtitle="upcoming class"
           color="bg-blue-500"
-          onClick={() => onNavigate('schedule')}
+          onClick={() => onNavigate('timetable')}
         />
 
         {/* 2. Notes */}

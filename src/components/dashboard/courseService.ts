@@ -21,7 +21,12 @@ export const courseService = {
           full_name: profile.full_name || 'User',
           user_type: profile.user_type || 'student',
           department: profile.department,
-          academic_year: profile.academic_year || '2024-25'
+          academic_year: profile.academic_year || '2024-25',
+          
+          // --- FIX: Explicitly map these fields ---
+          role: profile.role || 'student', 
+          subscription_tier: profile.subscription_tier || 'free'
+          
         } : undefined
       };
     } catch (error) {

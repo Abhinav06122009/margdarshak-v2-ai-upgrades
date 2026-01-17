@@ -1,3 +1,5 @@
+// src/lib/course.ts
+
 export interface Course {
   id: string;
   name: string;
@@ -39,6 +41,9 @@ export interface SecureUser {
     user_type: string;
     department?: string;
     academic_year?: string;
+    // --- ADDED THESE FIELDS ---
+    role?: string; 
+    subscription_tier?: 'free' | 'premium' | 'premium_elite';
   };
 }
 

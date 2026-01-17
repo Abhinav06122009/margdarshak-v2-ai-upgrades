@@ -2,35 +2,32 @@ import React, { useState, useEffect, useRef, Suspense, createContext, useContext
 import { motion, AnimatePresence, useAnimation, useSpring, useTransform, useMotionValue, useScroll } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import { 
-  BarChart, BookOpen, Calendar, CheckSquare, Cpu, Shield, Zap, Star, MessageSquare, 
-  ArrowRight, Twitter, Linkedin, Github, Users, Award, TrendingUp, Rocket,
-  Volume2, VolumeX, Eye, GitBranch, Target, ThumbsUp, Sparkles, BrainCircuit
+  BarChart, BookOpen, Calendar, CheckSquare, Shield, Zap, Star, 
+  ArrowRight, Users, Award, TrendingUp, Rocket,
+  Volume2, VolumeX, Eye, Target, Sparkles, BrainCircuit
 } from 'lucide-react';
+import { aiService } from '@/lib/aiService';
+import Footer from '@/components/Footer';
 
 // --- Global Sound Context (for max UX) ---
-// This creates UI sounds without any external files
+const SoundContext = createContext<any>(null);
 
-const SoundContext = createContext();
-
-const SoundProvider = ({ children }) => {
+const SoundProvider = ({ children }: { children: React.ReactNode }) => {
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const audioContextRef = useRef(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
-    // Initialize AudioContext on user interaction (or mount)
     const initAudio = () => {
       if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       }
     };
-    // Try to init on mount, but it might require a user gesture
     initAudio();
-    // Add a click listener to ensure it's initialized
     window.addEventListener('click', initAudio, { once: true });
     return () => window.removeEventListener('click', initAudio);
   }, []);
 
-  const playSound = useCallback((type) => {
+  const playSound = useCallback((type: string) => {
     if (!soundEnabled || !audioContextRef.current) return;
 
     const context = audioContextRef.current;
@@ -69,11 +66,7 @@ const SoundProvider = ({ children }) => {
   const toggleSound = () => {
     setSoundEnabled(prev => {
       const newState = !prev;
-      if (newState) {
-        playSound('toggleOn');
-      } else {
-        // We can't play a sound if it's being disabled, but the icon will change
-      }
+      if (newState) playSound('toggleOn');
       return newState;
     });
   };
@@ -85,14 +78,12 @@ const SoundProvider = ({ children }) => {
   );
 };
 
-// Custom hook to easily use sound
 const useSound = () => useContext(SoundContext);
 
-// Simple Link component simulation
-const Link = ({ to, children, className = '', onClick, ...props }) => {
+const Link = ({ to, children, className = '', onClick, ...props }: any) => {
   const { playSound } = useSound();
   
-  const handleClick = (e) => {
+  const handleClick = (e: any) => {
     if (to.startsWith('#')) {
       e.preventDefault();
       const targetElement = document.getElementById(to.substring(1));
@@ -116,7 +107,6 @@ const Link = ({ to, children, className = '', onClick, ...props }) => {
     </a>
   );
 };
-
 
 // --- Global Enhancements ---
 
@@ -155,18 +145,19 @@ const Preloader = () => (
 );
 
 const CustomCursor = () => {
-  const cursorDotRef = useRef(null);
+  const cursorDotRef = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState(false);
 
   useEffect(() => {
-    const moveCursor = (e) => {
+    const moveCursor = (e: MouseEvent) => {
       if (cursorDotRef.current) {
         cursorDotRef.current.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
       }
     };
     
-    const handleMouseOver = (e) => {
-      if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' || e.target.closest('a') || e.target.closest('button')) {
+    const handleMouseOver = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'A' || target.tagName === 'BUTTON' || target.closest('a') || target.closest('button')) {
         setHovered(true);
       } else {
         setHovered(false);
@@ -209,7 +200,6 @@ const ScrollProgressBar = () => {
 
 // --- New Gemini-Powered Components ---
 
-// A simple loading spinner
 const LoadingSpinner = () => (
   <svg
     className="animate-spin h-5 w-5 text-white"
@@ -217,55 +207,16 @@ const LoadingSpinner = () => (
     fill="none"
     viewBox="0 0 24 24"
   >
-    <circle
-      className="opacity-25"
-      cx="12"
-      cy="12"
-      r="10"
-      stroke="currentColor"
-      strokeWidth="4"
-    ></circle>
-    <path
-      className="opacity-75"
-      fill="currentColor"
-      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-    ></path>
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
   </svg>
 );
 
-// Utility function for API calls with exponential backoff
-const fetchWithBackoff = async (url, options, retries = 3, delay = 1000) => {
-  try {
-    const response = await fetch(url, options);
-    if (!response.ok) {
-      // Don't retry on client-side errors (e.g., 400 Bad Request)
-      if (response.status >= 400 && response.status < 500) {
-        throw new Error(`Client Error: ${response.status} ${response.statusText}`);
-      }
-      // Retry on server-side errors
-      throw new Error(`Server Error: ${response.status} ${response.statusText}`);
-    }
-    return response.json();
-  } catch (error) {
-    if (retries > 0) {
-      // console.warn(`Retrying... attempts left: ${retries - 1}`);
-      await new Promise(res => setTimeout(res, delay));
-      // Increase delay for next retry
-      return fetchWithBackoff(url, options, retries - 1, delay * 2);
-    } else {
-      // console.error("API call failed after all retries.", error);
-      throw error;
-    }
-  }
-};
-
-
-// The new interactive feature section
 const GeminiFeatureDemo = () => {
   const [topic, setTopic] = useState("Quantum Entanglement");
   const [explanation, setExplanation] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const { playSound } = useSound();
 
   const handleGenerate = async () => {
@@ -276,45 +227,27 @@ const GeminiFeatureDemo = () => {
     setError(null);
     setExplanation("");
 
-    const apiKey = "AIzaSyDs3ntL06GQnlQgzFtBzXLCC83qoglWAmU"; // Leave empty, as per instructions
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-    
-    const systemPrompt = "You are an expert tutor. Your name is MARGDARSHAK. Explain the following academic concept clearly and concisely, as if for a college student. Use short paragraphs and simple language. Do not use markdown formatting like asterisks for bolding.";
-    const userQuery = topic;
-
-    const payload = {
-      contents: [{ parts: [{ text: userQuery }] }],
-      systemInstruction: {
-        parts: [{ text: systemPrompt }]
-      },
-    };
-
     try {
-      const result = await fetchWithBackoff(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      // Calls the new Puter-based function in aiService
+      const result = await aiService.explainConcept(topic);
 
-      const candidate = result.candidates?.[0];
-      if (candidate && candidate.content?.parts?.[0]?.text) {
-        setExplanation(candidate.content.parts[0].text);
+      if (result) {
+        setExplanation(result);
       } else {
-        throw new Error("No valid response received from the AI.");
+        throw new Error("No response received from the AI.");
       }
     } catch (err) {
       setError("Sorry, I couldn't fetch an explanation. Please try again later.");
-      // console.error(err);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <SectionWrapper id="gemini-demo" className="container mx-auto">
+    <SectionWrapper id="margdarshak-ai" className="container mx-auto">
       <SectionHeader 
         title="✨ Try the AI Assistant" 
-        subtitle="Get a simple explanation for any academic concept. Powered by Gemini." 
+        subtitle="Get a simple explanation for any academic concept. Powered by Margdarshak-ai." 
       />
       <motion.div
         className="max-w-3xl mx-auto p-8 border border-blue-600/30 bg-gray-900/50 rounded-2xl shadow-xl backdrop-blur-sm"
@@ -361,7 +294,6 @@ const GeminiFeatureDemo = () => {
             transition={{ duration: 0.5 }}
           >
             <h4 className="text-xl font-bold text-emerald-400 mb-3">Explanation:</h4>
-            {/* Using 'pre-wrap' safely renders newlines from the AI's text response */}
             <p className="text-gray-300 text-lg" style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
               {explanation}
             </p>
@@ -372,10 +304,9 @@ const GeminiFeatureDemo = () => {
   );
 };
 
+// --- Placeholder Sections ---
 
-// --- Placeholder Sections (Now Fully Built!) ---
-
-const SectionWrapper = ({ children, id, className = '' }) => {
+const SectionWrapper = ({ children, id, className = '' }: any) => {
   const controls = useAnimation();
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 });
 
@@ -400,7 +331,7 @@ const SectionWrapper = ({ children, id, className = '' }) => {
   );
 };
 
-const SectionHeader = ({ title, subtitle }) => (
+const SectionHeader = ({ title, subtitle }: any) => (
   <motion.div 
     variants={{
       hidden: { opacity: 0, y: 20 },
@@ -576,19 +507,23 @@ const Pricing = () => {
         'Dynamic Scheduling',
         'Priority Support'
       ],
-      popular: true,
+      popular: false,
     },
     {
-      name: 'Ultimate',
+      name: 'Premium + Elite',
       price: 'RS 1200',
       desc: 'For high-achievers who want every advantage.',
       features: [
-        'Pro AI Assistant (GPT-4 Level)',
-        'All Navigator Features',
-        'Real-time Tutor Sync (Beta)',
-        'Personalized Success Coach'
+                 'Everything In Premium',
+                'Deep Web Research & Vision',
+                'All Premium Features',
+                '500 GB Cloud Storage',
+                'Predictive Grade Analytics',
+                'Automatic Timetable Gen',
+                'Dedicated 24/7 Smart Tutor',
+                'And Much More'
       ],
-      popular: false,
+      popular: true,
     }
   ];
 
@@ -680,38 +615,13 @@ const CTA = () => (
   </SectionWrapper>
 );
 
-const Footer = () => (
-  <footer className="bg-gray-950 border-t border-white/5 py-12">
-    <div className="container mx-auto px-6 text-center text-gray-400">
-      <div className="flex justify-center items-center gap-3 mb-6">
-        <img src="src/components/logo/logo.png" alt="Logo" className="h-6 w-6 rounded-md" />
-        <h1 className="text-xl font-bold tracking-wider text-white">MARGDARSHAK</h1>
-      </div>
-      <div className="flex justify-center space-x-6 mb-6">
-        <Link to="#features" className="hover:text-blue-400 transition-colors">Features</Link>
-        <Link to="#pricing" className="hover:text-blue-400 transition-colors">Pricing</Link>
-        <Link to="#about" className="hover:text-blue-400 transition-colors">About Us</Link>
-        <Link to="#contact" className="hover:text-blue-400 transition-colors">Contact</Link>
-      </div>
-      <div className="flex justify-center space-x-6 mb-6">
-        <Twitter className="w-5 h-5 hover:text-blue-400 cursor-pointer" />
-        <Linkedin className="w-5 h-5 hover:text-blue-400 cursor-pointer" />
-        <Github className="w-5 h-5 hover:text-blue-400 cursor-pointer" />
-      </div>
-      <p className="text-sm">&copy; {new Date().getFullYear()} MARGDARSHAK. All rights reserved.</p>
-    </div>
-  </footer>
-);
-
 // --- Custom Hooks ---
 
-// Hook to apply subtle 3D parallax to a container based on mouse position
-const useMouseParallax = (ref, strength = 2) => {
+const useMouseParallax = (ref: any, strength = 2) => {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    const handleMouseMove = (e) => {
-      // Normalize to -1 to 1 based on viewport center
+    const handleMouseMove = (e: MouseEvent) => {
       const normalizedX = (e.clientX / window.innerWidth - 0.5) * 2;
       const normalizedY = (e.clientY / window.innerHeight - 0.5) * 2;
       setMousePos({ x: normalizedX, y: normalizedY });
@@ -730,9 +640,8 @@ const useMouseParallax = (ref, strength = 2) => {
   return { translateX: parallaxX, translateY: parallaxY, rotateX, rotateY };
 };
 
-// --- New 3D Tilt Card Component ---
-const TiltCard = ({ children, className = '', ...props }) => {
-  const ref = useRef(null);
+const TiltCard = ({ children, className = '', ...props }: any) => {
+  const ref = useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = useState(false);
   const { playSound } = useSound();
   
@@ -746,7 +655,7 @@ const TiltCard = ({ children, className = '', ...props }) => {
   const rotateY = useTransform(springX, [-100, 100], ['-8deg', '8deg']); 
 
   useEffect(() => {
-    const handleMouseMove = (e) => {
+    const handleMouseMove = (e: MouseEvent) => {
       if (ref.current && isHovering) {
         const card = ref.current.getBoundingClientRect();
         const deltaX = (e.clientX - (card.left + card.width / 2)) / (card.width / 2) * 100;
@@ -783,14 +692,13 @@ const TiltCard = ({ children, className = '', ...props }) => {
   );
 };
 
-
-// --- 3D Scene Simulation (Enhanced Network Mesh) ---
+// --- 3D Scene Simulation ---
 const Scene3D = () => {
-  const canvasRef = useRef(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    const handleMouseMove = (e) => {
+    const handleMouseMove = (e: MouseEvent) => {
       setMousePos({ x: e.clientX, y: e.clientY });
     };
     window.addEventListener('mousemove', handleMouseMove);
@@ -798,6 +706,7 @@ const Scene3D = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
@@ -807,37 +716,33 @@ const Scene3D = () => {
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    const particles = [];
-    for (let i = 0; i < 200; i++) { // Increased particle density
+    const particles: any[] = [];
+    for (let i = 0; i < 200; i++) {
       particles.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * (Math.random() * 0.5 + 0.1), // Variable speed
+        vx: (Math.random() - 0.5) * (Math.random() * 0.5 + 0.1),
         vy: (Math.random() - 0.5) * (Math.random() * 0.5 + 0.1),
         size: Math.random() * 1.5 + 0.5,
         color: `hsl(${200 + Math.random() * 40}, 80%, 60%)`
       });
     }
     
-    let animationFrameId;
+    let animationFrameId: number;
 
     const animate = () => {
-      // Add subtle trailing effect
       ctx.fillStyle = 'rgba(10, 10, 10, 0.5)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       particles.forEach((p, i) => {
-        // Apply friction and move
         p.vx *= 0.995; 
         p.vy *= 0.995; 
         p.x += p.vx;
         p.y += p.vy;
 
-        // Bounce off edges
         if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
         if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
 
-        // Mouse repulsion/attraction (Magnetic Effect)
         const dxMouse = mousePos.x - p.x;
         const dyMouse = mousePos.y - p.y;
         const distMouse = Math.sqrt(dxMouse * dxMouse + dyMouse * dyMouse);
@@ -849,13 +754,11 @@ const Scene3D = () => {
           p.vy -= (dyMouse / distMouse) * force * 0.05;
         }
 
-        // Draw particle
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fillStyle = p.color;
         ctx.fill();
 
-        // Draw connections (Network Mesh)
         for (let j = i + 1; j < particles.length; j++) {
           const p2 = particles[j];
           const dx = p.x - p2.x;
@@ -866,7 +769,6 @@ const Scene3D = () => {
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p2.x, p2.y);
-            // Gradient opacity based on distance
             ctx.strokeStyle = `rgba(59, 130, 246, ${0.15 * (1 - distance / 100)})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
@@ -897,7 +799,7 @@ const Scene3D = () => {
 
 // --- Custom Components ---
 
-const AnimatedGradientText = ({ children, className = '' }) => {
+const AnimatedGradientText = ({ children, className = '' }: any) => {
   const style = {
     backgroundSize: '200% auto',
     animation: 'gradient-shift 6s ease-in-out infinite alternate',
@@ -940,8 +842,8 @@ const AnimatedGradientText = ({ children, className = '' }) => {
   );
 };
 
-const MagneticButton = ({ children, className = '', ...props }) => {
-  const ref = useRef(null);
+const MagneticButton = ({ children, className = '', ...props }: any) => {
+  const ref = useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = useState(false);
   const { playSound } = useSound();
   
@@ -955,7 +857,7 @@ const MagneticButton = ({ children, className = '', ...props }) => {
   const rotateY = useTransform(springX, [-50, 50], ['-15deg', '15deg']);
 
   useEffect(() => {
-    const handleMouseMove = (e) => {
+    const handleMouseMove = (e: MouseEvent) => {
       if (ref.current && isHovering) {
         const button = ref.current.getBoundingClientRect();
         const centerX = button.left + button.width / 2;
@@ -1041,10 +943,10 @@ const Header = () => {
           <h1 className="text-2xl font-black tracking-wider text-white">MARGDARSHAK</h1>
         </div>
         <ul className="hidden md:flex items-center space-x-8 font-medium">
-          {['home', 'features', 'gemini-demo', 'testimonials', 'about', 'pricing'].map(item => (
+          {['home', 'features', 'margdarshak-ai', 'testimonials', 'about', 'pricing'].map(item => (
             <li key={item}>
               <Link to={`#${item}`} className="capitalize text-gray-300 hover:text-blue-400 transition-colors relative group">
-                {item.replace('gemini-demo', 'AI Demo')}
+                {item.replace('margdarshak-ai', 'Margdarshak-ai')}
                 <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-400 to-emerald-400 group-hover:w-full transition-all duration-300" />
               </Link>
             </li>
@@ -1085,10 +987,10 @@ const Header = () => {
           className="md:hidden mt-4 px-6 pb-4 bg-gray-900/90 backdrop-blur-md border-t border-blue-600/10"
         >
           <ul className="flex flex-col items-start space-y-4">
-            {['home', 'features', 'gemini-demo', 'testimonials', 'about', 'pricing'].map(item => (
+            {['home', 'features', 'margdarshak-ai', 'testimonials', 'about', 'pricing'].map(item => (
               <li key={item} className="w-full">
                 <Link to={`#${item}`} onClick={() => setIsMobileMenuOpen(false)} className="capitalize block py-2 w-full text-gray-300 hover:text-blue-400 transition-colors">
-                  {item.replace('gemini-demo', 'AI Demo')}
+                  {item.replace('margdarshak-ai', 'Margdarshak-ai')}
                 </Link>
               </li>
             ))}
@@ -1105,7 +1007,7 @@ const Header = () => {
 };
 
 const Hero = () => {
-  const heroRef = useRef(null);
+  const heroRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll();
   const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.9]);
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
@@ -1113,7 +1015,7 @@ const Hero = () => {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    const handleMouseMove = (e) => {
+    const handleMouseMove = (e: MouseEvent) => {
       setMousePos({ x: e.clientX, y: e.clientY });
     };
     window.addEventListener('mousemove', handleMouseMove);

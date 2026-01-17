@@ -5,13 +5,15 @@ import aiService, { type AIBriefing, type UserStats } from '../../lib/aiService'
 
 interface BriefingWidgetProps {
   user: any;
-  tasks: any[];
+  tasks: any[]; // Used for schedule/tasks
+  analytics?: any; // Used for grades and courses info
   stats?: UserStats; 
 }
 
 const AIBriefingWidget: React.FC<BriefingWidgetProps> = ({ 
   user, 
   tasks, 
+  analytics,
   stats = { studyStreak: 0, tasksCompleted: 0, hoursStudied: 0 } 
 }) => {
   const [briefing, setBriefing] = useState<AIBriefing | null>(null);
@@ -19,7 +21,6 @@ const AIBriefingWidget: React.FC<BriefingWidgetProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const hasFetchedRef = useRef(false);
 
-  // ... (Keep existing fetchBriefing logic exactly as it was)
   const fetchBriefing = useCallback(async (force = false) => {
     if (!user?.id) return;
     if (hasFetchedRef.current && !force) return;
@@ -27,12 +28,21 @@ const AIBriefingWidget: React.FC<BriefingWidgetProps> = ({
     hasFetchedRef.current = true; 
     try {
       const userName = user.user_metadata?.full_name || user.profile?.full_name || "Student";
-      const pendingTasks = (tasks || []).filter(t => t.status !== 'completed').map(t => ({ title: t.title, priority: t.priority }));
-      const data = await aiService.generateDailyBriefing(user.id, userName, pendingTasks, stats);
+      
+      // Prepare rich context for the AI
+      const briefingContext = {
+        tasks: tasks || [],
+        grades: analytics?.topGrades || [], // Sync grades
+        courses: analytics?.subjectBreakdown || [], // Sync courses/subjects
+        schedule: tasks?.filter(t => t.due_date && new Date(t.due_date) > new Date()) || [], // Sync schedule from tasks
+        stats: stats
+      };
+
+      const data = await aiService.generateDailyBriefing(user.id, userName, briefingContext);
       setBriefing(data);
     } catch (error) { console.warn("Briefing error", error); } 
     finally { setIsLoading(false); }
-  }, [user, tasks, stats]);
+  }, [user, tasks, analytics, stats]);
 
   useEffect(() => { if (user?.id) fetchBriefing(); }, [user?.id, fetchBriefing]);
 

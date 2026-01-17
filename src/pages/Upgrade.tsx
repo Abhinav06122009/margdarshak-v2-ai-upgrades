@@ -267,12 +267,14 @@ const Upgrade = () => {
                   <span className="text-white font-bold text-emerald-400">Elite System (No Key Req)</span>
               </div>
               {[
+                'Everything In Premium',
                 'Deep Web Research & Vision',
                 'All Premium Features',
                 '500 GB Cloud Storage',
                 'Predictive Grade Analytics',
                 'Automatic Timetable Gen',
-                'Dedicated 24/7 Smart Tutor'
+                'Dedicated 24/7 Smart Tutor',
+                'And Much More'
               ].map((feature, i) => (
                 <div key={i} className="flex items-center gap-3 text-sm">
                   <div className="p-0.5 rounded-full bg-purple-500/20 text-purple-400">

@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
  * -----------------------------
  * This service handles all AI interactions via the Puter.js bridge.
  * It manages context (memory), image generation, and chat persistence.
- * * @author Abhinav Jha
+ * @author Abhinav Jha
  */
 
 // --- Global Types ---
@@ -27,6 +27,14 @@ export interface AIBriefing {
   focus_area: string;
   message: string;
   color: string;
+}
+
+export interface BriefingContext {
+  tasks: any[];
+  grades: any[];
+  courses: any[];
+  schedule: any[];
+  stats: UserStats;
 }
 
 // --- Utilities ---
@@ -131,8 +139,11 @@ export const aiService = {
       const history = await aiService.getNeuralContext(userId);
       const messages = [...history, { role: "user", content: prompt }];
 
-      // 2. Get AI Response
-      const response = await window.puter.chat(messages);
+      // 2. Get AI Response (Safe check for chat function location)
+      const chatFn = window.puter.chat || (window.puter.ai && window.puter.ai.chat);
+      if (typeof chatFn !== 'function') throw new Error("AI Chat function not found");
+
+      const response = await chatFn(messages);
 
       // 3. Parse Response (Handle different return types)
       let aiResponse = "";
@@ -172,25 +183,55 @@ export const aiService = {
 
   /**
    * DAILY BRIEFING
-   * Generates the personalized dashboard greeting.
+   * Generates the personalized dashboard greeting using tasks, grades, and schedule.
    */
   generateDailyBriefing: async (
     userId: string,
-    userName: string
+    userName: string,
+    context?: BriefingContext // New optional parameter for rich context
   ): Promise<AIBriefing> => {
-    // Explicit system prompt to force JSON format
+    
+    // Construct a rich prompt based on available data
+    let contextStr = "";
+    if (context) {
+      const { tasks, grades, courses, schedule, stats } = context;
+      
+      const pendingTasks = tasks?.filter(t => t.status !== 'completed').slice(0, 5).map(t => t.title).join(", ") || "None";
+      const recentGrades = grades?.slice(0, 3).map(g => `${g.subject}: ${g.percentage}%`).join(", ") || "None";
+      const activeCourses = courses?.map(c => c.name).join(", ") || "General Studies";
+      
+      contextStr = `
+        CONTEXT DATA:
+        - Pending Tasks: ${pendingTasks}
+        - Recent Grades: ${recentGrades}
+        - Active Courses: ${activeCourses}
+        - Study Streak: ${stats.studyStreak} days
+        - Hours Studied: ${stats.hoursStudied}
+      `;
+    }
+
     const systemPrompt = `
       SYSTEM_PROTOCOL: DAILY_BRIEFING
       USER: ${userName}
-      TASK: Generate a motivating morning briefing.
-      FORMAT: Valid JSON Only.
-      STRUCTURE: {"greeting":"","focus_area":"","message":"","color":"text-emerald-400"}
+      ROLE: You are MARGDARSHAK, an AI academic mentor.
+      ${contextStr}
+      TASK: Generate a concise, motivating morning briefing based on the user's real academic data.
+      GUIDELINES:
+      - If they have low grades, be encouraging and suggest a focus area.
+      - If they have a high streak, congratulate them.
+      - If they have many tasks, suggest prioritizing.
+      FORMAT: Valid JSON Only. No markdown blocks.
+      STRUCTURE: {"greeting":"<Short greeting>","focus_area":"<One specific subject/topic to focus on today>","message":"<2 sentences max advice>","color":"text-emerald-400"}
     `;
 
     try {
       if (!window.puter) throw new Error("Service Driver Missing");
 
-      const response = await window.puter.chat(systemPrompt);
+      // Safe check for chat function location
+      const chatFn = window.puter.chat || (window.puter.ai && window.puter.ai.chat);
+      if (typeof chatFn !== 'function') throw new Error("AI Chat function not found");
+
+      const response = await chatFn(systemPrompt);
       const rawContent = typeof response === "string" 
         ? response 
         : response?.message?.content;
@@ -203,11 +244,107 @@ export const aiService = {
     } catch (e) {
       // Graceful fallback so the dashboard doesn't break
       return {
-        greeting: `Welcome, ${userName}`,
-        focus_area: "System Check",
-        message: "AI services are initializing...",
-        color: "text-gray-400"
+        greeting: `Welcome back, ${userName}`,
+        focus_area: "General Review",
+        message: "I'm ready to help you organize your studies today.",
+        color: "text-indigo-400"
       };
+    }
+  },
+
+  /**
+   * LANDING PAGE - EXPLAIN CONCEPT (Puter.js)
+   * Generates a simple academic explanation for the public landing page demo.
+   * Uses robust detection for the Puter.js chat function location.
+   */
+  explainConcept: async (topic: string): Promise<string | null> => {
+    try {
+      if (!window.puter) {
+        console.error("Puter.js not loaded");
+        return "System initializing... please refresh the page.";
+      }
+
+      // Check auth before trying to chat to prevent 401 errors
+      if (window.puter.auth && !window.puter.auth.isSignedIn()) {
+        await window.puter.auth.signIn();
+      }
+
+      const systemPrompt = `You are an expert tutor named MARGDARSHAK. Explain the following academic concept clearly and concisely, as if for a college student. Use short paragraphs and simple language. Do not use markdown formatting like asterisks for bolding. Concept: ${topic}`;
+
+      // Robustly find the chat function (it can be at puter.chat OR puter.ai.chat)
+      const chatFunction = window.puter.chat || (window.puter.ai && window.puter.ai.chat);
+
+      if (typeof chatFunction !== 'function') {
+        console.error("Puter Chat function missing. Available keys:", Object.keys(window.puter));
+        return "AI Service unavailable. Please try again later.";
+      }
+
+      const response = await chatFunction(systemPrompt);
+      
+      // Handle various response types from Puter
+      if (typeof response === 'string') return response;
+      if (response?.message?.content) return response.message.content;
+      
+      return "No valid response received from AI.";
+
+    } catch (error) {
+      console.error("Landing Page AI Error:", error);
+      return null;
+    }
+  },
+
+  // -----------------------------------------------------
+  // NEW COURSE MANAGEMENT AI FEATURES ADDED BELOW
+  // -----------------------------------------------------
+
+  /**
+   * COURSE SYLLABUS GENERATOR
+   * Generates a structured syllabus JSON based on a course name and description.
+   */
+  generateCourseSyllabus: async (courseName: string, level: string): Promise<any> => {
+    try {
+      if (!window.puter) throw new Error("AI Driver Missing");
+      
+      const systemPrompt = `
+        You are an expert curriculum developer. 
+        Create a 4-module syllabus for a course titled "${courseName}" at the "${level}" level.
+        Return ONLY valid JSON. No text before or after.
+        JSON Structure:
+        {
+          "modules": [
+            {
+              "title": "Module Title",
+              "lessons": [
+                { "title": "Lesson Title", "duration": "45m" },
+                { "title": "Lesson Title", "duration": "1h" }
+              ]
+            }
+          ]
+        }
+      `;
+
+      const chatFn = window.puter.chat || (window.puter.ai && window.puter.ai.chat);
+      const response = await chatFn(systemPrompt);
+      const rawContent = typeof response === "string" ? response : response?.message?.content;
+      return cleanAndParseJSON(rawContent) || { modules: [] };
+    } catch (e) {
+      console.error("AI Syllabus Error", e);
+      return { modules: [] };
+    }
+  },
+
+  /**
+   * AI TUTOR FOR COURSE
+   * Provides specific advice or explanation for a selected course context.
+   */
+  askCourseTutor: async (courseName: string, question: string): Promise<string> => {
+    try {
+      const systemPrompt = `You are an expert tutor for the course "${courseName}". Answer this student question clearly and concisely: "${question}"`;
+      const chatFn = window.puter.chat || (window.puter.ai && window.puter.ai.chat);
+      const response = await chatFn(systemPrompt);
+      return typeof response === "string" ? response : response?.message?.content || "I couldn't generate an answer.";
+    } catch (e) {
+      return "AI Tutor is currently offline.";
     }
   }
 };
