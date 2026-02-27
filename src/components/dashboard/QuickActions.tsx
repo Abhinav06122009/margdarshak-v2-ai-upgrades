@@ -5,7 +5,11 @@ import {
   Book, 
   Calculator, 
   Settings,
-  ChevronRight 
+  ChevronRight,
+  BrainCircuit,
+  GraduationCap,
+  BarChart3,
+  Sparkles
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -19,13 +23,15 @@ const ActionCard = ({
   title, 
   subtitle, 
   onClick, 
-  color 
+  color,
+  badge
 }: { 
   icon: any, 
   title: string, 
   subtitle: string, 
   onClick: () => void, 
-  color: string 
+  color: string,
+  badge?: string
 }) => (
   <button 
     onClick={onClick}
@@ -35,11 +41,16 @@ const ActionCard = ({
       <Icon className={`w-5 h-5 ${color.replace('bg-', 'text-')}`} />
     </div>
     <div className="flex-1 min-w-0">
-      <h4 className="text-sm font-bold text-gray-100 truncate">{title}</h4>
+      <h4 className="text-sm font-bold text-gray-100 truncate flex items-center gap-2">
+        {title}
+        {badge && (
+          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-wide">
+            {badge}
+          </span>
+        )}
+      </h4>
       <p className="text-[10px] text-gray-500 font-medium truncate">{subtitle}</p>
     </div>
-
-
     <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-white transition-colors opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
   </button>
 );
@@ -58,43 +69,69 @@ const QuickActions: React.FC<QuickActionsProps> = ({ stats, onNavigate }) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
         
         <ActionCard 
+          icon={BrainCircuit}
+          title="AI Tutor"
+          subtitle="Ask any academic question"
+          color="bg-amber-500"
+          onClick={() => navigate('/ai-chat')}
+        />
+
+        <ActionCard 
+          icon={GraduationCap}
+          title="Quiz Generator"
+          subtitle="Test your knowledge with AI"
+          color="bg-purple-500"
+          badge="New"
+          onClick={() => navigate('/quiz')}
+        />
+
+        <ActionCard 
+          icon={FileText}
+          title="Essay Helper"
+          subtitle="AI writing assistance"
+          color="bg-blue-500"
+          badge="New"
+          onClick={() => navigate('/essay-helper')}
+        />
+
+        <ActionCard 
+          icon={Sparkles}
+          title="Study Planner"
+          subtitle="AI-generated schedules"
+          color="bg-emerald-500"
+          badge="New"
+          onClick={() => navigate('/study-planner')}
+        />
+
+        <ActionCard 
+          icon={BarChart3}
+          title="AI Analytics"
+          subtitle="Performance insights"
+          color="bg-indigo-500"
+          badge="New"
+          onClick={() => navigate('/ai-analytics')}
+        />
+
+        <ActionCard 
           icon={Calendar}
           title="Schedule"
-          subtitle="upcoming class"
-          color="bg-blue-500"
+          subtitle="Timetable & events"
+          color="bg-cyan-500"
           onClick={() => onNavigate('timetable')}
         />
 
-        {/* 2. Notes */}
-        <ActionCard 
-          icon={FileText}
-          title="Notes"
-          subtitle="1 active note"
-          color="bg-amber-500"
-          onClick={() => onNavigate('notes')}
-        />
-
-        {/* 3. Courses */}
         <ActionCard 
           icon={Book}
           title="Courses"
-          subtitle="2 active courses"
-          color="bg-emerald-500"
+          subtitle="Manage your courses"
+          color="bg-pink-500"
           onClick={() => onNavigate('courses')}
-        />
-
-        <ActionCard 
-          icon={Calculator}
-          title="Calculator"
-          subtitle="Scientific & Graphing"
-          color="bg-purple-500"
-          onClick={() => onNavigate('calculator')} // Ensure you have this route or modal
         />
 
         <ActionCard 
           icon={Settings}
           title="Settings"
-          subtitle="Account & Preferences"
+          subtitle="Account & preferences"
           color="bg-gray-500"
           onClick={() => navigate('/settings')}
         />

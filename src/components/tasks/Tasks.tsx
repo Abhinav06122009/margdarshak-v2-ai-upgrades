@@ -1,6 +1,7 @@
 // src/components/tasks/Tasks.tsx
 
 import React, { useState, useEffect } from 'react';
+import TaskAIPanel from './ai/TaskAIPanel';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Edit, Trash2, Book, Users, Calendar, Search, Filter, BookOpen, X, LayoutGrid, List, Kanban, Play, Folder, Download, CheckSquare,
@@ -944,6 +945,14 @@ const Tasks: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
                     </Select>
                   </CardContent>
                 </Card>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                <TaskAIPanel tasks={tasks} />
               </motion.div>
             </div>
           </div>

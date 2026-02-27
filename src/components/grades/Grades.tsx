@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Edit, Trash2, Search, Filter, X, LayoutGrid, List, Award, TrendingUp, CheckCircle, Shield, AlertCircle, Palette, BookOpen
 } from 'lucide-react';
+import GradeInsights from './ai/GradeInsights';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -391,6 +392,10 @@ const Grades: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
                     </Select>
                   </CardContent>
                 </Card>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }}>
+                <GradeInsights grades={grades} />
               </motion.div>
             </div>
           </div>
