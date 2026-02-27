@@ -439,39 +439,363 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          blocked_reason: string | null
           created_at: string | null
           department: string | null
           email: string | null
+          failed_login_attempts: number | null
           full_name: string | null
           grade_level: string | null
           id: string
+          is_blocked: boolean | null
+          last_login_at: string | null
+          last_login_ip: string | null
+          risk_level: string | null
+          security_score: number | null
+          security_settings: Json | null
           student_id: string | null
           updated_at: string | null
           user_type: string
         }
         Insert: {
           avatar_url?: string | null
+          blocked_reason?: string | null
           created_at?: string | null
           department?: string | null
           email?: string | null
+          failed_login_attempts?: number | null
           full_name?: string | null
           grade_level?: string | null
           id: string
+          is_blocked?: boolean | null
+          last_login_at?: string | null
+          last_login_ip?: string | null
+          risk_level?: string | null
+          security_score?: number | null
+          security_settings?: Json | null
           student_id?: string | null
           updated_at?: string | null
           user_type: string
         }
         Update: {
           avatar_url?: string | null
+          blocked_reason?: string | null
           created_at?: string | null
           department?: string | null
           email?: string | null
+          failed_login_attempts?: number | null
           full_name?: string | null
           grade_level?: string | null
           id?: string
+          is_blocked?: boolean | null
+          last_login_at?: string | null
+          last_login_ip?: string | null
+          risk_level?: string | null
+          security_score?: number | null
+          security_settings?: Json | null
           student_id?: string | null
           updated_at?: string | null
           user_type?: string
+        }
+        Relationships: []
+      }
+      admin_reports: {
+        Row: {
+          category: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          severity: string | null
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          severity?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          severity?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      admin_users: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      blocked_ips: {
+        Row: {
+          blocked_by: string | null
+          created_at: string | null
+          id: string
+          ip_address: string
+          reason: string | null
+        }
+        Insert: {
+          blocked_by?: string | null
+          created_at?: string | null
+          id?: string
+          ip_address: string
+          reason?: string | null
+        }
+        Update: {
+          blocked_by?: string | null
+          created_at?: string | null
+          id?: string
+          ip_address?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
+      blocked_users: {
+        Row: {
+          blocked_by: string | null
+          created_at: string | null
+          id: string
+          reason: string | null
+          user_id: string | null
+        }
+        Insert: {
+          blocked_by?: string | null
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          blocked_by?: string | null
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      ip_logs: {
+        Row: {
+          city: string | null
+          country: string | null
+          created_at: string | null
+          event_type: string | null
+          id: string
+          ip_address: string | null
+          is_proxy: boolean | null
+          metadata: Json | null
+        }
+        Insert: {
+          city?: string | null
+          country?: string | null
+          created_at?: string | null
+          event_type?: string | null
+          id?: string
+          ip_address?: string | null
+          is_proxy?: boolean | null
+          metadata?: Json | null
+        }
+        Update: {
+          city?: string | null
+          country?: string | null
+          created_at?: string | null
+          event_type?: string | null
+          id?: string
+          ip_address?: string | null
+          is_proxy?: boolean | null
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
+      security_logs: {
+        Row: {
+          ai_summary: string | null
+          created_at: string | null
+          device_id: string | null
+          event_type: string
+          flags: string[] | null
+          id: string
+          ip_address: string | null
+          location: string | null
+          metadata: Json | null
+          risk_level: string | null
+          risk_score: number | null
+          summary: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ai_summary?: string | null
+          created_at?: string | null
+          device_id?: string | null
+          event_type: string
+          flags?: string[] | null
+          id?: string
+          ip_address?: string | null
+          location?: string | null
+          metadata?: Json | null
+          risk_level?: string | null
+          risk_score?: number | null
+          summary?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ai_summary?: string | null
+          created_at?: string | null
+          device_id?: string | null
+          event_type?: string
+          flags?: string[] | null
+          id?: string
+          ip_address?: string | null
+          location?: string | null
+          metadata?: Json | null
+          risk_level?: string | null
+          risk_score?: number | null
+          summary?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      security_settings: {
+        Row: {
+          ai_sensitivity: number | null
+          created_at: string | null
+          id: string
+          rate_limit: number | null
+        }
+        Insert: {
+          ai_sensitivity?: number | null
+          created_at?: string | null
+          id?: string
+          rate_limit?: number | null
+        }
+        Update: {
+          ai_sensitivity?: number | null
+          created_at?: string | null
+          id?: string
+          rate_limit?: number | null
+        }
+        Relationships: []
+      }
+      security_threats: {
+        Row: {
+          created_at: string | null
+          event_type: string
+          flags: string[] | null
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          summary: string | null
+          threat_level: string | null
+          threat_score: number | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_type: string
+          flags?: string[] | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          summary?: string | null
+          threat_level?: string | null
+          threat_score?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_type?: string
+          flags?: string[] | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          summary?: string | null
+          threat_level?: string | null
+          threat_score?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      support_tickets: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string | null
+          priority: string | null
+          status: string | null
+          subject: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          priority?: string | null
+          status?: string | null
+          subject?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          priority?: string | null
+          status?: string | null
+          subject?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_activity_logs: {
+        Row: {
+          activity_type: string
+          created_at: string | null
+          device_id: string | null
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string | null
+          device_id?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string | null
+          device_id?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_id?: string | null
         }
         Relationships: []
       }

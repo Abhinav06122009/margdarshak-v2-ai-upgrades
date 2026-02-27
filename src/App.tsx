@@ -11,6 +11,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { CursorProvider } from '@/lib/CursorContext';
 import CookieConsent from '@/components/CookieConsent';
 import { AIProvider } from '@/contexts/AIContext';
+import { AdminProvider, AdminContext } from '@/contexts/AdminContext';
+import { SecurityProvider } from '@/contexts/SecurityContext';
 import GlobalAIAssistant from '@/components/ai/GlobalAIAssistant';
 import ShortcutsOverlay from '@/components/ui/ShortcutsOverlay';
 
@@ -29,6 +31,15 @@ import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsAndConditions from "@/pages/TermsAndConditions";
 import BlogPage from "@/pages/BlogPage";
 import AdminMessages from "@/pages/AdminMessages";
+import AdminAuthPage from '@/components/auth/AdminAuthPage';
+import AdminDashboard from '@/pages/admin/AdminDashboard';
+import UserManagement from '@/pages/admin/UserManagement';
+import SecurityCenter from '@/pages/admin/SecurityCenter';
+import ReportsInvestigation from '@/pages/admin/ReportsInvestigation';
+import ContentModeration from '@/pages/admin/ContentModeration';
+import Analytics from '@/pages/admin/Analytics';
+import SupportCenter from '@/pages/admin/SupportCenter';
+import AdminSettings from '@/pages/admin/AdminSettings';
 
 // Features - eagerly loaded
 import Tasks from "@/components/tasks/Tasks";
@@ -91,6 +102,19 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return session ? <>{children}</> : null;
 };
 
+const AdminProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { session, isAdmin, loading } = useContext(AdminContext);
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!loading && (!session || !isAdmin)) {
+      navigate('/admin/login', { replace: true });
+    }
+  }, [session, isAdmin, loading, navigate]);
+
+  if (loading) return <div className="h-screen bg-[#050505] flex items-center justify-center text-white/50">Verifying admin access...</div>;
+  return session && isAdmin ? <>{children}</> : null;
+};
+
 const PageLoader = () => (
   <div className="h-screen bg-[#050505] flex items-center justify-center">
     <div className="flex flex-col items-center gap-3">
@@ -114,10 +138,12 @@ const App = () => (
         <CursorProvider>
           <BrowserRouter>
             <AuthProvider>
-              <AIProvider>
-                <div className="bg-[#050505] min-h-screen text-white">
-                  <AnimatePresence mode="wait">
-                    <Routes>
+              <AdminProvider>
+                <SecurityProvider>
+                  <AIProvider>
+                    <div className="bg-[#050505] min-h-screen text-white">
+                      <AnimatePresence mode="wait">
+                        <Routes>
                       {/* --- PUBLIC ROUTES (AdSense & SEO Optimized) --- */}
                       <Route path="/" element={<><SEO title="MARGDARSHAK | AI Student Platform" description="The ultimate AI-powered student management platform with smart tutoring, quiz generator, study planner, and more." /><LandingPage /></>} />
                       <Route path="/auth" element={<Index />} />
@@ -153,6 +179,15 @@ const App = () => (
                       <Route path="/progress" element={<ProtectedRoute><ProgressTracker /></ProtectedRoute>} />
                       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                       <Route path="/admin/messages" element={<ProtectedRoute><AdminMessages /></ProtectedRoute>} />
+                      <Route path="/admin/login" element={<AdminAuthPage />} />
+                      <Route path="/admin" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
+                      <Route path="/admin/users" element={<AdminProtectedRoute><UserManagement /></AdminProtectedRoute>} />
+                      <Route path="/admin/security" element={<AdminProtectedRoute><SecurityCenter /></AdminProtectedRoute>} />
+                      <Route path="/admin/reports" element={<AdminProtectedRoute><ReportsInvestigation /></AdminProtectedRoute>} />
+                      <Route path="/admin/content" element={<AdminProtectedRoute><ContentModeration /></AdminProtectedRoute>} />
+                      <Route path="/admin/analytics" element={<AdminProtectedRoute><Analytics /></AdminProtectedRoute>} />
+                      <Route path="/admin/support" element={<AdminProtectedRoute><SupportCenter /></AdminProtectedRoute>} />
+                      <Route path="/admin/settings" element={<AdminProtectedRoute><AdminSettings /></AdminProtectedRoute>} />
 
                       {/* --- NEW AI FEATURES --- */}
                       <Route path="/quiz" element={
@@ -198,12 +233,14 @@ const App = () => (
                   <CookieConsent />
                 </div>
               </AIProvider>
-            </AuthProvider>
-          </BrowserRouter>
-        </CursorProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
-  </HelmetProvider>
+            </SecurityProvider>
+          </AdminProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </CursorProvider>
+  </TooltipProvider>
+</QueryClientProvider>
+</HelmetProvider>
 );
 
 export default App;
