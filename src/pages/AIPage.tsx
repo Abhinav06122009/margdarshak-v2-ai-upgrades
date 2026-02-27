@@ -10,10 +10,10 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { getStoredByok, getSubscriptionTier, isEliteTier, resolveAiAuthHeaders, setStoredByok } from '@/lib/aiGateway';
 import { jsPDF } from "jspdf";
 
 type Mode = 'deepresearch' | 'quickchat';
-const ELITE_TIERS = ['premium_elite', 'extra_plus', 'premium_plus', 'premium+elite'];
 
 interface Message {
   role: 'user' | 'assistant';
@@ -41,19 +41,14 @@ const SmartTutorPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const storedKey = localStorage.getItem('margdarshak_user_key');
+    const storedKey = getStoredByok();
     if (storedKey) setUserApiKey(storedKey);
     checkSubscription();
   }, []);
 
   const checkSubscription = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data } = await supabase.from('profiles').select('subscription_tier').eq('id', user.id).single();
-      if (data?.subscription_tier) {
-        setSubscriptionTier(data.subscription_tier);
-      }
-    }
+    const tier = await getSubscriptionTier();
+    setSubscriptionTier(tier);
   };
 
   useEffect(() => {
@@ -69,13 +64,16 @@ const SmartTutorPage = () => {
 
   const saveApiKey = (key: string) => {
     setUserApiKey(key);
-    localStorage.setItem('margdarshak_user_key', key);
+    setStoredByok(key);
     setShowKeyModal(false);
   };
 
-  const isEliteUser = () => ELITE_TIERS.includes(subscriptionTier);
+  const isEliteUser = () => isEliteTier(subscriptionTier);
+  const getModelForMode = (targetMode: Mode) => targetMode === 'deepresearch' ? 'claude-3-5-sonnet-latest' : 'gemini-1.5-flash';
+
   const executeSend = async (textToSend: string, modeToUse: Mode, imageToSend: File | null = null) => {
-    if (!isEliteUser() && !userApiKey) {
+    const keyConfig = resolveAiAuthHeaders(subscriptionTier);
+    if (!keyConfig.canProceed) {
       setShowKeyModal(true);
       return;
     }
@@ -93,7 +91,7 @@ const SmartTutorPage = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       const headers: any = {
-        ...(!isEliteUser() && userApiKey ? { "X-User-API-Key": userApiKey } : {}),
+        ...resolveAiAuthHeaders(subscriptionTier).headers,
         ...(session?.access_token ? { "Authorization": `Bearer ${session.access_token}` } : {})
       };
 
@@ -103,13 +101,15 @@ const SmartTutorPage = () => {
         const formData = new FormData();
         formData.append("messages", JSON.stringify([...messages, { role: 'user', content: textToSend }]));
         formData.append("mode", modeToUse);
+        formData.append("model", getModelForMode(modeToUse));
         formData.append("image", imageToSend);
         body = formData;
       } else {
         headers["Content-Type"] = "application/json";
         body = JSON.stringify({
           messages: [...messages, { role: 'user', content: textToSend }],
-          mode: modeToUse
+          mode: modeToUse,
+          model: getModelForMode(modeToUse)
         });
       }
       
@@ -205,9 +205,9 @@ const SmartTutorPage = () => {
               <Lock className="w-5 h-5" /> BYO Key Required
             </DialogTitle>
             <DialogDescription className="text-gray-400 pt-2">
-              Free and Standard Premium users must provide a <strong>Cloud API Key</strong>. <br/>
+              Free and Premium users use <strong>BYOK</strong>. Premium+Elite users use our <strong>Emergent LLM universal key</strong> (OpenAI/Gemini/Claude). <br/>
               <span className="text-emerald-400 text-xs mt-2 block">
-                Upgrade to <strong>Elite</strong> to use our internal engine without a key.
+                Multi-model routing: Gemini Flash (quick), GPT-4o (reasoning), Claude Sonnet (deep analysis).
               </span>
             </DialogDescription>
           </DialogHeader>
@@ -221,7 +221,7 @@ const SmartTutorPage = () => {
                 value={userApiKey}
               />
               <p className="text-[10px] text-gray-500">
-                Don't have one? <a href="#" className="text-amber-500 hover:underline">Get a free key here</a>.
+                Don't have one? <a href="https://github.com/cheahjs/free-llm-api-resources?tab=readme-ov-file#google-ai-studio" target="_blank" rel="noreferrer" className="text-amber-500 hover:underline">Get a free key here</a>.
               </p>
             </div>
             <div className="flex items-center justify-between border-t border-white/10 pt-4 mt-2">
@@ -273,7 +273,7 @@ const SmartTutorPage = () => {
                 MARGDARSHAK <span className="text-amber-500">PRO</span>
               </h1>
               <div className="flex items-center gap-2 text-[9px] font-bold text-amber-500/80 uppercase tracking-[0.2em]">
-                {isEliteUser() && <span className="text-purple-400 flex items-center gap-1"><Zap size={10} /> Elite Active</span>}
+                {isEliteUser() && <span className="text-purple-400 flex items-center gap-1"><Zap size={10} /> Premium+Elite (Emergent Key)</span>}
                 {!isEliteUser() && subscriptionTier === 'premium' && <span className="text-blue-400 flex items-center gap-1"><Sparkles size={10} /> Premium (BYOK)</span>}
                 {!isEliteUser() && subscriptionTier !== 'premium' && <span className="text-gray-400 flex items-center gap-1"><Lock size={10} /> Free Plan (BYOK)</span>}
               </div>
@@ -290,8 +290,8 @@ const SmartTutorPage = () => {
              
              <div className="flex bg-black/40 p-1 rounded-full border border-white/5">
                 {[
-                  { id: 'deepresearch', icon: Globe, label: 'Research' },
-                  { id: 'quickchat', icon: Zap, label: 'Quick' },
+                  { id: 'deepresearch', icon: Globe, label: 'Research · Claude' },
+                  { id: 'quickchat', icon: Zap, label: 'Quick · Gemini' },
                 ].map((m) => (
                   <button
                     key={m.id}

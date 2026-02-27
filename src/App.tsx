@@ -10,6 +10,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CursorProvider } from '@/lib/CursorContext';
 import CookieConsent from '@/components/CookieConsent';
+import GlobalAIWidget from '@/components/ai/GlobalAIWidget';
 
 // Pages
 import LandingPage from '@/pages/LandingPage';
@@ -135,6 +136,7 @@ const App = () => (
                 <Toaster />
                 <Sonner />
                 <CookieConsent />
+                <GlobalAIWidget />
               </div>
             </AuthProvider>
           </BrowserRouter>
