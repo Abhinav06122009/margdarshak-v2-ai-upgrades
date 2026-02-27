@@ -24,6 +24,7 @@ MARGDARSHAK is an all-in-one student management system designed for online learn
 ## Getting Started
 
 To get started with MARGDARSHAK, visit our website and explore the features.
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Abhinav06122009/margdarshak-v2-ai-upgrades?utm_source=oss&utm_medium=github&utm_campaign=Abhinav06122009%2Fmargdarshak-v2-ai-upgrades&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
 ---
 
