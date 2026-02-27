@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Note, NoteFolder, FormData } from './types';
+import NoteSummarizer from './ai/NoteSummarizer';
 
 interface NoteSheetProps {
   isOpen: boolean;
@@ -102,6 +103,13 @@ export const NoteSheet: React.FC<NoteSheetProps> = ({
                   <Input id="tags" value={formData.tags} onChange={(e) => setFormData({ ...formData, tags: e.target.value })} placeholder="e.g. chemistry, chapter-5, important" className="text-base bg-black/30 border-2 border-white/15 text-white"/>
                   <p className="text-gray-500 text-xs mt-1">Separate tags with commas.</p>
                 </div>
+                {formData.content && formData.content.length >= 50 && (
+                  <NoteSummarizer
+                    noteContent={formData.content}
+                    noteTitle={formData.title || 'Note'}
+                  />
+                )}
+
                 <div className="flex justify-end gap-4 pt-6 mt-4 border-t border-white/10">
                   <Button type="button" variant="ghost" onClick={onClose} className="px-8 py-3 text-base text-white/80 hover:bg-white/10">
                     Cancel
