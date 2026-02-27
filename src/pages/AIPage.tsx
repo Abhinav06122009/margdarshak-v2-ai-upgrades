@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label"; 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Send, BrainCircuit, Globe, Zap, Camera, 
   Sparkles, X, Activity, Download, Volume2, VolumeX, Key, Lock, Crown
@@ -14,6 +15,13 @@ import { jsPDF } from "jspdf";
 
 type Mode = 'deepresearch' | 'quickchat';
 const ELITE_TIERS = ['premium_elite', 'extra_plus', 'premium_plus', 'premium+elite'];
+
+const MODEL_OPTIONS = [
+  { id: 'sambanova-llama', label: 'SambaNova Llama 3.1', description: 'Fast tutoring & routing' },
+  { id: 'gemma-27b', label: 'Gemma 2 27B (HF)', description: 'Balanced academic chat' },
+  { id: 'qwen-27b', label: 'Qwen 2.5 32B (HF)', description: 'Deep reasoning & analysis' },
+  { id: 'github-gpt4o', label: 'GitHub GPT-4o', description: 'Advanced multi-skill answers' },
+];
 
 interface Message {
   role: 'user' | 'assistant';
@@ -29,6 +37,7 @@ const SmartTutorPage = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<Mode>('deepresearch');
+  const [selectedModel, setSelectedModel] = useState<string>(MODEL_OPTIONS[0].id);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -103,13 +112,15 @@ const SmartTutorPage = () => {
         const formData = new FormData();
         formData.append("messages", JSON.stringify([...messages, { role: 'user', content: textToSend }]));
         formData.append("mode", modeToUse);
+        formData.append("model", selectedModel);
         formData.append("image", imageToSend);
         body = formData;
       } else {
         headers["Content-Type"] = "application/json";
         body = JSON.stringify({
           messages: [...messages, { role: 'user', content: textToSend }],
-          mode: modeToUse
+          mode: modeToUse,
+          model: selectedModel
         });
       }
       
@@ -280,13 +291,29 @@ const SmartTutorPage = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 mt-3 md:mt-0">
+          <div className="flex items-center gap-2 mt-3 md:mt-0 flex-wrap justify-center">
              {/* Key Button: Visible for EVERYONE who isn't Elite */}
              {!isEliteUser() && (
                <Button variant="ghost" size="sm" onClick={() => setShowKeyModal(true)} className="text-xs text-gray-400 border border-white/5 bg-black/20 hover:bg-white/10">
                  <Key size={12} className="mr-2" /> {userApiKey ? 'Change Key' : 'Set API Key'}
                </Button>
              )}
+
+             <Select value={selectedModel} onValueChange={setSelectedModel}>
+               <SelectTrigger className="h-9 w-[220px] bg-black/40 border border-white/10 text-xs text-white">
+                 <SelectValue placeholder="Select model" />
+               </SelectTrigger>
+               <SelectContent className="bg-[#121212] border border-white/10 text-white">
+                 {MODEL_OPTIONS.map((option) => (
+                   <SelectItem key={option.id} value={option.id} className="text-xs">
+                     <div className="flex flex-col">
+                       <span className="font-semibold text-white/90">{option.label}</span>
+                       <span className="text-[10px] text-white/50">{option.description}</span>
+                     </div>
+                   </SelectItem>
+                 ))}
+               </SelectContent>
+             </Select>
              
              <div className="flex bg-black/40 p-1 rounded-full border border-white/5">
                 {[
